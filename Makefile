@@ -1,5 +1,20 @@
 .PHONY: kernel clean qemu gdb
 
+K=kernel
+U=user
+
+TOOLPREFIX = riscv64-unknown-elf-
+CC = $(TOOLPREFIX)gcc
+AS = $(TOOLPREFIX)gas
+LD = $(TOOLPREFIX)ld
+OBJCOPY = $(TOOLPREFIX)objcopy
+OBJDUMP = $(TOOLPREFIX)objdump
+
+# OBJS = \
+#   $K/entry.o \
+#   $K/start.o \
+#   $K/uart.o \
+
 CFLAGS = -Wall -Werror -O0 \
 	-fno-omit-frame-pointer -ggdb \
 	-MD -mcmodel=medany \
@@ -9,10 +24,11 @@ CFLAGS = -Wall -Werror -O0 \
 LDFLAGS = -static -nostdlib -Wl,--no-relax -z max-page-size=4096
 
 kernel:
-	riscv64-unknown-elf-gcc $(CFLAGS) -c kernel/entry.S -o kernel/entry.o
-	riscv64-unknown-elf-gcc $(CFLAGS) -c kernel/start.c -o kernel/start.o
-	riscv64-unknown-elf-gcc $(LDFLAGS) \
-		kernel/entry.o kernel/start.o \
+	$(CC) $(CFLAGS) -c kernel/entry.S -o kernel/entry.o
+	$(CC) $(CFLAGS) -c kernel/start.c -o kernel/start.o
+	$(CC) $(CFLAGS) -c kernel/uart.c -o kernel/uart.o
+	$(CC) $(LDFLAGS) \
+		kernel/entry.o kernel/start.o kernel/uart.o \
 		-T kernel/kernel.ld \
 		-o kernel/kernel.elf
 
