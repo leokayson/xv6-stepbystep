@@ -19,7 +19,7 @@ CFLAGS = -Wall -Werror -O0 \
 	-fno-omit-frame-pointer -ggdb \
 	-MD -mcmodel=medany \
 	-ffreestanding -nostdlib -fno-common \
-	-fno-stack-protector -fno-pie
+	-fno-stack-protector -fno-pie 
 
 LDFLAGS = -static -nostdlib -Wl,--no-relax -z max-page-size=4096
 
@@ -27,8 +27,10 @@ kernel:
 	$(CC) $(CFLAGS) -c kernel/entry.S -o kernel/entry.o
 	$(CC) $(CFLAGS) -c kernel/start.c -o kernel/start.o
 	$(CC) $(CFLAGS) -c kernel/uart.c -o kernel/uart.o
+	$(CC) $(CFLAGS) -c kernel/main.c -o kernel/main.o
 	$(CC) $(LDFLAGS) \
 		kernel/entry.o kernel/start.o kernel/uart.o \
+		kernel/main.o \
 		-T kernel/kernel.ld \
 		-o kernel/kernel.elf
 
