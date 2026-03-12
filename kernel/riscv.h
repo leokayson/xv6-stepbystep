@@ -1,6 +1,8 @@
 #ifndef __RISCV_H__
 #define __RISCV_H__
 
+#include "types.h"
+
 #ifndef __ASSEMBLER__
 
 // which hart (core) is this?
@@ -18,6 +20,7 @@ r_mhartid()
 #define MSTATUS_MPP_M (3L << 11)
 #define MSTATUS_MPP_S (1L << 11)
 #define MSTATUS_MPP_U (0L << 11)
+#define MSTATUS_MIE (1L << 3)    // machine-mode interrupt enable.
 
 static inline uint64
 r_mstatus()
@@ -98,7 +101,9 @@ w_sie(uint64 x)
 }
 
 // Machine-mode Interrupt Enable
-#define MIE_STIE (1L << 5)  // supervisor timer
+#define MIE_MEIE (1L << 11) // external
+#define MIE_MTIE (1L << 7)  // timer
+#define MIE_MSIE (1L << 3)  // software
 static inline uint64
 r_mie()
 {
@@ -176,38 +181,11 @@ r_stvec()
   return x;
 }
 
-// Supervisor Timer Comparison Register
-static inline uint64
-r_stimecmp()
-{
-  uint64 x;
-  // asm volatile("csrr %0, stimecmp" : "=r" (x) );
-  asm volatile("csrr %0, 0x14d" : "=r" (x) );
-  return x;
-}
-
+// Machine-mode interrupt vector
 static inline void 
-w_stimecmp(uint64 x)
+w_mtvec(uint64 x)
 {
-  // asm volatile("csrw stimecmp, %0" : : "r" (x));
-  asm volatile("csrw 0x14d, %0" : : "r" (x));
-}
-
-// Machine Environment Configuration Register
-static inline uint64
-r_menvcfg()
-{
-  uint64 x;
-  // asm volatile("csrr %0, menvcfg" : "=r" (x) );
-  asm volatile("csrr %0, 0x30a" : "=r" (x) );
-  return x;
-}
-
-static inline void 
-w_menvcfg(uint64 x)
-{
-  // asm volatile("csrw menvcfg, %0" : : "r" (x));
-  asm volatile("csrw 0x30a, %0" : : "r" (x));
+  asm volatile("csrw mtvec, %0" : : "r" (x));
 }
 
 // Physical Memory Protection
@@ -242,6 +220,12 @@ r_satp()
   uint64 x;
   asm volatile("csrr %0, satp" : "=r" (x) );
   return x;
+}
+
+static inline void 
+w_mscratch(uint64 x)
+{
+  asm volatile("csrw mscratch, %0" : : "r" (x));
 }
 
 // Supervisor Trap Cause

@@ -1,8 +1,19 @@
+#include "defs.h"
+#include "riscv.h"
 
 void main() {
-    extern void uartinit();
-    extern void uartputs(char *s);
-
+    uartputs("=== Enter main ===\n");
+    uartputs("=== Init UART ===\n");
     uartinit();
-    uartputs("Hello World\r\n");
+    uartputs("=== Init trap ===\n");
+    trapinithart();
+
+    /* 在S mode上可以响应中断 */
+    w_sstatus(r_sstatus() | SSTATUS_SIE);
+    
+    uartputs("Hello World\n");
+
+    while (1) {
+
+    }
 }

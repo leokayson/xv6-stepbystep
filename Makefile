@@ -1,4 +1,4 @@
-.PHONY: kernel clean qemu gdb
+.PHONY: build clean qemu gdb rebuild
 
 K=kernel
 U=user
@@ -23,14 +23,16 @@ CFLAGS = -Wall -Werror -O0 \
 
 LDFLAGS = -static -nostdlib -Wl,--no-relax -z max-page-size=4096
 
-kernel:
+build:
 	$(CC) $(CFLAGS) -c kernel/entry.S -o kernel/entry.o
+	$(CC) $(CFLAGS) -c kernel/kernelvec.S -o kernel/kernelvec.o
 	$(CC) $(CFLAGS) -c kernel/start.c -o kernel/start.o
 	$(CC) $(CFLAGS) -c kernel/uart.c -o kernel/uart.o
 	$(CC) $(CFLAGS) -c kernel/main.c -o kernel/main.o
+	$(CC) $(CFLAGS) -c kernel/trap.c -o kernel/trap.o
 	$(CC) $(LDFLAGS) \
 		kernel/entry.o kernel/start.o kernel/uart.o \
-		kernel/main.o \
+		kernel/main.o kernel/kernelvec.o kernel/trap.o \
 		-T kernel/kernel.ld \
 		-o kernel/kernel.elf
 
@@ -42,12 +44,14 @@ QEMU = qemu-system-riscv64 \
 	-m 128 \
 	-smp 1
 
-qemu: kernel
+qemu: build
 	$(QEMU)
 
-gdb: kernel
+gdb: build
 	$(QEMU) -S -s & \
 	gdb -q -x gdbinit
 
 clean:
-	rm -rf kernel/kernel.elf kernel/*.o kernel/*.d
+	rm -rf kernel/kernel.elf kernel/*.o kernel/*.d kernel/*.asm
+
+rebuild: clean build
