@@ -1,57 +1,68 @@
+# 伪目标声明
 .PHONY: build clean qemu gdb rebuild
 
-K=kernel
-U=user
+# 目录定义
+K := kernel
 
-TOOLPREFIX = riscv64-unknown-elf-
-CC = $(TOOLPREFIX)gcc
-AS = $(TOOLPREFIX)gas
-LD = $(TOOLPREFIX)ld
-OBJCOPY = $(TOOLPREFIX)objcopy
-OBJDUMP = $(TOOLPREFIX)objdump
+# 工具链前缀
+TOOLPREFIX := riscv64-unknown-elf-
+CC := $(TOOLPREFIX)gcc
+# AS := $(TOOLPREFIX)gas # 通常不需要单独调用 gas，gcc 会处理
+# LD := $(TOOLPREFIX)ld  # 链接时建议直接用 CC (gcc)，而不是直接用 ld
+OBJCOPY := $(TOOLPREFIX)objcopy
+OBJDUMP := $(TOOLPREFIX)objdump
 
-# OBJS = \
-#   $K/entry.o \
-#   $K/start.o \
-#   $K/uart.o \
+# --- 核心修改：定义 OBJS 变量 ---
+OBJS := \
+	$(K)/entry.o \
+	$(K)/kernelvec.o \
+	$(K)/start.o \
+	$(K)/uart.o \
+	$(K)/main.o \
+	$(K)/trap.o
 
-CFLAGS = -Wall -Werror -O0 \
+# 编译标志
+CFLAGS := -Wall -Werror -O0 \
 	-fno-omit-frame-pointer -ggdb \
 	-MD -mcmodel=medany \
 	-ffreestanding -nostdlib -fno-common \
-	-fno-stack-protector -fno-pie 
+	-fno-stack-protector -fno-pie
 
-LDFLAGS = -static -nostdlib -Wl,--no-relax -z max-page-size=4096
+# 链接标志
+# 注意：这里保留 -Wl, 是因为我们将使用 CC (gcc) 来执行链接命令
+LDFLAGS := -static -nostdlib -Wl,--no-relax -z max-page-size=4096
 
-build:
-	$(CC) $(CFLAGS) -c kernel/entry.S -o kernel/entry.o
-	$(CC) $(CFLAGS) -c kernel/kernelvec.S -o kernel/kernelvec.o
-	$(CC) $(CFLAGS) -c kernel/start.c -o kernel/start.o
-	$(CC) $(CFLAGS) -c kernel/uart.c -o kernel/uart.o
-	$(CC) $(CFLAGS) -c kernel/main.c -o kernel/main.o
-	$(CC) $(CFLAGS) -c kernel/trap.c -o kernel/trap.o
-	$(CC) $(LDFLAGS) \
-		kernel/entry.o kernel/start.o kernel/uart.o \
-		kernel/main.o kernel/kernelvec.o kernel/trap.o \
-		-T kernel/kernel.ld \
-		-o kernel/kernel.elf
+# 默认目标
+build: $(K)/kernel.elf
 
-QEMU = qemu-system-riscv64 \
-	-machine virt \
-	-nographic \
-	-bios none \
-	-kernel kernel/kernel.elf \
-	-m 128 \
-	-smp 1
+# 链接规则：使用 $(CC) 而不是 $(LD)
+# gcc 会自动处理 -Wl, 前缀并将其传递给底层的 ld
+$(K)/kernel.elf: $(OBJS) $(K)/kernel.ld
+	$(CC) $(LDFLAGS) -T $(K)/kernel.ld -o $@ $(OBJS)
+
+# 编译规则：C 文件
+$(K)/%.o: $(K)/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# 编译规则：汇编文件
+$(K)/%.o: $(K)/%.S
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# QEMU 配置
+QEMU := qemu-system-riscv64
+QEMU_FLAGS := -machine virt -nographic -bios none -kernel $(K)/kernel.elf -m 128 -smp 1
 
 qemu: build
-	$(QEMU)
+	$(QEMU) $(QEMU_FLAGS)
 
 gdb: build
-	$(QEMU) -S -s & \
+	$(QEMU) $(QEMU_FLAGS) -S -s &
 	gdb -q -x gdbinit
 
 clean:
-	rm -rf kernel/kernel.elf kernel/*.o kernel/*.d kernel/*.asm
+	rm -f $(K)/*.o $(K)/*.d $(K)/kernel.elf $(K)/*.asm
 
 rebuild: clean build
+
+# 包含自动生成的依赖文件
+-include $(OBJS:.o=.d)
