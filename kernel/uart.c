@@ -59,6 +59,11 @@ void uartputc(char c) {
     WriteReg(THR, c);
 }
 
+void consputc(char c) {
+    uartputc(c);
+}
+
+
 void uartputs(char *s) {
     while (s && *s) {
         if (*s == '\n')

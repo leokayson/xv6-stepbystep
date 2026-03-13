@@ -7,11 +7,15 @@ void main() {
     uartinit();
     uartputs("=== Init trap ===\n");
     trapinithart();
-
+    
     /* 在S mode上可以响应中断 */
     w_sstatus(r_sstatus() | SSTATUS_SIE);
     
-    uartputs("Hello World\n");
+    uartputs("Hello xv6\n");
+    
+    uartputs("=== Init physical memory ===\n");
+    kinit();
+    kmemtest();
 
     while (1) {
 

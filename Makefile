@@ -19,7 +19,10 @@ OBJS := \
 	$(K)/start.o \
 	$(K)/uart.o \
 	$(K)/main.o \
-	$(K)/trap.o
+	$(K)/trap.o \
+	$(K)/kalloc.o \
+	$(K)/string.o \
+	$(K)/printf.o 
 
 # 编译标志
 CFLAGS := -Wall -Werror -O0 \
@@ -39,6 +42,9 @@ build: $(K)/kernel.elf
 # gcc 会自动处理 -Wl, 前缀并将其传递给底层的 ld
 $(K)/kernel.elf: $(OBJS) $(K)/kernel.ld
 	$(CC) $(LDFLAGS) -T $(K)/kernel.ld -o $@ $(OBJS)
+	$(OBJDUMP) -S $(K)/kernel.elf > $K/kernel.asm
+	$(OBJDUMP) -d $(K)/kernel.elf > $K/kernel.elf.objdump.txt
+		$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
 
 # 编译规则：C 文件
 $(K)/%.o: $(K)/%.c
@@ -48,9 +54,12 @@ $(K)/%.o: $(K)/%.c
 $(K)/%.o: $(K)/%.S
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# CPU 数
+CPU := 1
+
 # QEMU 配置
 QEMU := qemu-system-riscv64
-QEMU_FLAGS := -machine virt -nographic -bios none -kernel $(K)/kernel.elf -m 128 -smp 1
+QEMU_FLAGS := -machine virt -nographic -bios none -kernel $(K)/kernel.elf -m 128 -smp $(CPU)
 
 qemu: build
 	$(QEMU) $(QEMU_FLAGS)
