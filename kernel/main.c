@@ -16,7 +16,12 @@ void main() {
     uartputs("=== Init physical memory ===\n");
     kinit();
     kmemtest();
+    uartputs("=== Init virtual memory ===\n");
+    kvminit();
+    // kvminithart();
 
+    vmprint_kernel();
+    
     while (1) {
 
     }

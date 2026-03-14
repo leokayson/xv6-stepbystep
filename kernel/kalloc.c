@@ -84,7 +84,7 @@ void kmemtest() {
 		*p3 = 0x6;
 		printf("p3 = %p\n\n", p3);
 	}
-	
+
 	kfree(p3);
 
 	p1 = (uint64 *)kalloc();

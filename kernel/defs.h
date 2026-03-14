@@ -2,6 +2,7 @@
 #define __DEFS_H__
 
 #include "types.h"
+#include "riscv.h"
 
 // uart.c
 void uartinit();
@@ -38,4 +39,8 @@ int	 printf(char *, ...) __attribute__((format(printf, 1, 2)));
 void panic(char *) __attribute__((noreturn));
 void printfinit(void);
 
+// vm.c
+void   kvminit(void);
+void   kvminithart(void);
+void   vmprint_kernel(); // only for test
 #endif // !__DEFS_H__

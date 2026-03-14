@@ -4,5 +4,7 @@
 *.sym
 *.img
 *.elf
+*.txt
+*.log
 compile_commands.json
 .cache/

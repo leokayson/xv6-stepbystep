@@ -22,7 +22,8 @@ OBJS := \
 	$(K)/trap.o \
 	$(K)/kalloc.o \
 	$(K)/string.o \
-	$(K)/printf.o 
+	$(K)/printf.o \
+	$(K)/vm.o
 
 # 编译标志
 CFLAGS := -Wall -Werror -O0 \
@@ -44,7 +45,7 @@ $(K)/kernel.elf: $(OBJS) $(K)/kernel.ld
 	$(CC) $(LDFLAGS) -T $(K)/kernel.ld -o $@ $(OBJS)
 	$(OBJDUMP) -S $(K)/kernel.elf > $K/kernel.asm
 	$(OBJDUMP) -d $(K)/kernel.elf > $K/kernel.elf.objdump.txt
-		$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
+	$(OBJDUMP) -t $(K)/kernel.elf | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $(K)/kernel.sym
 
 # 编译规则：C 文件
 $(K)/%.o: $(K)/%.c
@@ -69,7 +70,7 @@ gdb: build
 	gdb -q -x gdbinit
 
 clean:
-	rm -f $(K)/*.o $(K)/*.d $(K)/kernel.elf $(K)/*.asm
+	rm -f $(K)/*.o $(K)/*.d $(K)/kernel.elf $(K)/*.asm $(K)/*.sym
 
 rebuild: clean build
 
