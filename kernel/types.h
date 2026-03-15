@@ -11,5 +11,9 @@ typedef unsigned int   uint32;
 typedef unsigned long  uint64;
 
 typedef uint64 pde_t;
+typedef enum {
+	FALSE = 0,
+	TRUE  = 1,
+} bool;
 
 #endif /* __TYPES_H__ */

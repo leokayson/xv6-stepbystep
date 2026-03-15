@@ -3,12 +3,16 @@
 
 #include "types.h"
 
+struct cpu;
+struct spinlock;
+struct buf;
+
 // uart.c
 void uartinit();
 void uartputs(char *s);
 void uartputc(char c);
 void consputc(char c);
-int uartgetc();
+int	 uartgetc();
 void uartintr();
 
 // kernelvec.c
@@ -41,29 +45,32 @@ void panic(char *) __attribute__((noreturn));
 void printfinit(void);
 
 // vm.c
-void   kvminit(void);
-void   kvminithart(void);
-void   vmprint_kernel(); // only for test
-
-struct cpu;
-struct spinlock;
+void kvminit(void);
+void kvminithart(void);
+void vmprint_kernel(); // only for test
 
 // proc.c
-int cpuid();
+int			cpuid();
 struct cpu *mycpu();
 
 // spinlock.c
 void initlock(struct spinlock *lk, char *name);
 void acquire(struct spinlock *lk);
 void release(struct spinlock *lk);
-int holding(struct spinlock *lk);
+int	 holding(struct spinlock *lk);
 void critical_enter(void);
 void critical_exit(void);
 
 // plic.c
-void            plicinit(void);
-void            plicinithart(void);
-int             plic_claim(void);
-void            plic_complete(int irq);
+void plicinit(void);
+void plicinithart(void);
+int	 plic_claim(void);
+void plic_complete(int irq);
+
+// virtio_disk.c
+void virtio_disk_init(void);
+void virtio_disk_rw(struct buf *b, bool is_write);
+void  virtio_disk_intr(void);
+void virtio_disk_test(void);
 
 #endif // !__DEFS_H__

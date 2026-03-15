@@ -1,0 +1,20 @@
+#ifndef __BUF_H__
+#define __BUF_H__
+
+#include "types.h"
+#include "fs.h"
+
+struct buf {
+	int	 valid; // has data been read from disk?
+	int	 disk; // does disk "own" buf?
+	uint dev;
+	uint blockno;
+	// TODO 增加睡眠锁
+	// struct sleeplock lock;
+	uint		refcnt;
+	struct buf *prev; // LRU cache list
+	struct buf *next;
+	uchar		data[BSIZE];
+};
+
+#endif // !__BUF_H__

@@ -20,21 +20,21 @@ void kerneltrap()
     uint64 sepc		 = r_sepc();
 	uint64 sstatus	 = r_sstatus();
 	uint64 scause	 = r_scause();
-	int	   which_dev = devintr();
+	int	   which_dev = 0;
 
 	if ((sstatus & SSTATUS_SPP) == 0)
 		panic("kerneltrap: not from supervisor mode");
 	if (intr_get() != 0)
 		panic("kerneltrap: interrupts enabled");
 
-	if (which_dev == 0) {
+	if ((which_dev = devintr()) == 0) {
 		printf("scause 0x%lx\n", scause);
 		printf("sepc=0x%lx stval=0x%lx\n", r_sepc(), r_stval());
 		panic("kerneltrap");
 	} else if (which_dev == 2) {
         uartputs("Timer IRQ...\n");
-    }
-
+	}
+	
 	// give up the CPU if this is a timer interrupt.
 	//   if(which_dev == 2 && myproc() != 0)
 	//     yield();
@@ -65,7 +65,8 @@ int devintr()
 			printf("UART IRQ\n");
 			uartintr();
 		} else if (irq == VIRTIO0_IRQ) {
-			// virtio_disk_intr();
+			printf("VIRTIO disk IRQ\n");
+			virtio_disk_intr();
 		} else if (irq) {
 			printf("unexpected interrupt irq=%d\n", irq);
 		}

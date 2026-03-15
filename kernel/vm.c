@@ -42,8 +42,8 @@ pagetable_t kvmmake(void)
 	memset(kpgtbl, 0, PGSIZE);
 
 	kvmmap(kpgtbl, UART0, UART0, PGSIZE, PTE_RW);
-	kvmmap(kpgtbl, VIRTIO0, VIRTIO0, PGSIZE, PTE_RW);
 	kvmmap(kpgtbl, PLIC, PLIC, 0x4000000, PTE_RW);
+	kvmmap(kpgtbl, VIRTIO0, VIRTIO0, PGSIZE, PTE_RW);
 	kvmmap(kpgtbl, KERNBASE, KERNBASE, (uint64)etext - KERNBASE, PTE_RX);
 	/* map kernel data and the physical RAM we'll make use of */
 	kvmmap(kpgtbl, (uint64)etext, (uint64)etext, PHYSTOP - (uint64)etext, PTE_RW);

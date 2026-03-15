@@ -26,7 +26,8 @@ OBJS := \
 	$(K)/vm.o \
 	$(K)/proc.o \
 	$(K)/spinlock.o \
-	$(K)/plic.o
+	$(K)/plic.o \
+	$(K)/virtio_disk.o \
 
 # 编译标志
 CFLAGS := -Wall -Werror -O0 \
@@ -64,16 +65,22 @@ CPU := 1
 # QEMU 配置
 QEMU := qemu-system-riscv64
 QEMU_FLAGS := -machine virt -nographic -bios none -kernel $(K)/kernel.elf -m 128 -smp $(CPU)
+QEMU_FLAGS += -global virtio-mmio.force-legacy=false
+QEMU_FLAGS += -drive file=fs.img,if=none,format=raw,id=x0
+QEMU_FLAGS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
-qemu: build
+fs.img:
+	dd if=/dev/urandom of=fs.img bs=1M count=6
+
+qemu: build fs.img
 	$(QEMU) $(QEMU_FLAGS)
 
-gdb: build
-	$(QEMU) $(QEMU_FLAGS) -S -s &
+gdb: build fs.img
+	$(QEMU) $(QEMU_FLAGS) -S -s & \
 	gdb -q -x gdbinit
 
 clean:
-	rm -f $(K)/*.o $(K)/*.d $(K)/kernel.elf $(K)/*.asm $(K)/*.sym
+	rm -f $(K)/*.o $(K)/*.d $(K)/kernel.elf $(K)/*.asm $(K)/*.sym fs.img
 
 rebuild: clean build
 
