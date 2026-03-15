@@ -16,11 +16,15 @@ void main() {
     uartputs("=== Init physical memory ===\n");
     kinit();
     kmemtest();
+
     uartputs("=== Init virtual memory ===\n");
     kvminit();
-    // kvminithart();
-
-    vmprint_kernel();
+    kvminithart();
+    // vmprint_kernel();
+    
+    uartputs("=== Init PLIC ===\n");
+    plicinit();
+    plicinithart();
     
     while (1) {
 

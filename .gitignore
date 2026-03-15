@@ -6,6 +6,6 @@
 *.elf
 *.txt
 *.log
-compile_commands.json
+*.json
 .cache/
 .vscode/

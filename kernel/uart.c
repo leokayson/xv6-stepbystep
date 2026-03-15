@@ -1,3 +1,4 @@
+#include "defs.h"
 #include "memlayout.h"
 
 // the UART control registers are memory-mapped
@@ -53,6 +54,17 @@ void uartinit()
     WriteReg(LCR, LCR_EIGHT_BITS);
 
     WriteReg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
+
+    // TODO: 实现IRQ_TX_ENABLE
+    WriteReg(IER, IER_RX_ENABLE);
+}
+
+int uartgetc(void) {
+    if (ReadReg(LSR) & 0x1) {
+        return ReadReg(RHR);
+    } else {
+        return -1;
+    }
 }
 
 void uartputc(char c) {
@@ -63,11 +75,20 @@ void consputc(char c) {
     uartputc(c);
 }
 
-
 void uartputs(char *s) {
     while (s && *s) {
         if (*s == '\n')
             uartputc('\r');
         uartputc(*s++);
+    }
+}
+
+void uartintr() {
+    while (1) {
+        int c = uartgetc();
+        if (c  == -1) {
+            break;
+        }
+        uartputc(c);
     }
 }

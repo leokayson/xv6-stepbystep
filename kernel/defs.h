@@ -2,13 +2,14 @@
 #define __DEFS_H__
 
 #include "types.h"
-#include "riscv.h"
 
 // uart.c
 void uartinit();
 void uartputs(char *s);
 void uartputc(char c);
 void consputc(char c);
+int uartgetc();
+void uartintr();
 
 // kernelvec.c
 void kernelvec();
@@ -17,7 +18,7 @@ void timervec(); // M mode下中断的入口
 // trap.c
 void trapinithart();
 void kernelvec(); // in kernelvec.S, calls kerneltrap().
-int	 devinitr();
+int	 devintr();
 
 // kalloc.c
 void *kalloc(void);
@@ -51,7 +52,6 @@ struct spinlock;
 int cpuid();
 struct cpu *mycpu();
 
-
 // spinlock.c
 void initlock(struct spinlock *lk, char *name);
 void acquire(struct spinlock *lk);
@@ -59,5 +59,11 @@ void release(struct spinlock *lk);
 int holding(struct spinlock *lk);
 void critical_enter(void);
 void critical_exit(void);
+
+// plic.c
+void            plicinit(void);
+void            plicinithart(void);
+int             plic_claim(void);
+void            plic_complete(int irq);
 
 #endif // !__DEFS_H__
