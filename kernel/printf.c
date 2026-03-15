@@ -6,7 +6,7 @@
 
 #include "types.h"
 #include "defs.h"
-// #include "spinlock.h"
+#include "spinlock.h"
 // #include "sleeplock.h"
 // #include "fs.h"
 // #include "file.h"
@@ -17,7 +17,7 @@ volatile int panicked = 0;
 
 // lock to avoid interleaving concurrent printf's.
 static struct {
-	// struct spinlock lock;
+	struct spinlock lock;
 	int				locking;
 } pr;
 
@@ -59,12 +59,12 @@ static void printptr(uint64 x)
 int printf(char *fmt, ...)
 {
 	va_list ap;
-	int		i, cx, c0, c1, c2;
+	int		i, cx, c0, c1, c2, locking;
 	char   *s;
 
-	// locking = pr.locking;
-	// if (locking)
-	// 	acquire(&pr.lock);
+	locking = pr.locking;
+	if (locking)
+		acquire(&pr.lock);
 
 	va_start(ap, fmt);
 	for (i = 0; (cx = fmt[i] & 0xff) != 0; i++) {
@@ -150,8 +150,8 @@ int printf(char *fmt, ...)
 	}
 	va_end(ap);
 
-	// if (locking)
-	// 	release(&pr.lock);
+	if (locking)
+		release(&pr.lock);
 
 	return 0;
 }
@@ -168,6 +168,6 @@ void panic(char *s)
 
 void printfinit(void)
 {
-	// initlock(&pr.lock, "pr");
+	initlock(&pr.lock, "print");
 	pr.locking = 1;
 }

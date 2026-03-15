@@ -23,7 +23,9 @@ OBJS := \
 	$(K)/kalloc.o \
 	$(K)/string.o \
 	$(K)/printf.o \
-	$(K)/vm.o
+	$(K)/vm.o \
+	$(K)/proc.o \
+	$(K)/spinlock.o
 
 # 编译标志
 CFLAGS := -Wall -Werror -O0 \

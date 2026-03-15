@@ -38,7 +38,7 @@ pagetable_t kvmmake(void)
 	if (!kpgtbl) {
 		panic("kvmmake kalloc fiailed");
 	}
-	// 创建0号level2页表
+	// 创建0号level3页表
 	memset(kpgtbl, 0, PGSIZE);
 
 	kvmmap(kpgtbl, UART0, UART0, PGSIZE, PTE_RW);

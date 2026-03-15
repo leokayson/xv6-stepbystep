@@ -43,4 +43,21 @@ void printfinit(void);
 void   kvminit(void);
 void   kvminithart(void);
 void   vmprint_kernel(); // only for test
+
+struct cpu;
+struct spinlock;
+
+// proc.c
+int cpuid();
+struct cpu *mycpu();
+
+
+// spinlock.c
+void initlock(struct spinlock *lk, char *name);
+void acquire(struct spinlock *lk);
+void release(struct spinlock *lk);
+int holding(struct spinlock *lk);
+void critical_enter(void);
+void critical_exit(void);
+
 #endif // !__DEFS_H__

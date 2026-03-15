@@ -2,6 +2,7 @@
 #include "defs.h"
 #include "riscv.h"
 #include "types.h"
+#include "spinlock.h"
 
 extern char end[]; // kernel.ld 中定义，内核镜像结束地址
 
@@ -11,6 +12,7 @@ struct run {
 
 struct {
 	struct run *freelist; // 链表头
+	struct spinlock lock;
 } kmem;
 
 void freerange(void *pa_start, void *pa_end);
@@ -18,6 +20,7 @@ void freerange(void *pa_start, void *pa_end);
 // 空闲内存地址的初始化
 void kinit(void)
 {
+	initlock(&kmem.lock, "kmem");
 	freerange(end, (void *)PHYSTOP);
 }
 
@@ -26,11 +29,11 @@ void *kalloc(void)
 {
 	struct run *r;
 
-	//   acquire(&kmem.lock);
+	acquire(&kmem.lock);
 	r = kmem.freelist;
 	if (r)
 		kmem.freelist = r->next;
-	//   release(&kmem.lock);
+	release(&kmem.lock);
 
 	if (r)
 		memset((char *)r, 5, PGSIZE); // fill with junk
@@ -50,10 +53,10 @@ void kfree(void *pa)
 
 	r = (struct run *)pa;
 
-	//   acquire(&kmem.lock);
+	acquire(&kmem.lock);
 	r->next		  = kmem.freelist;
 	kmem.freelist = r;
-	//   release(&kmem.lock);
+	release(&kmem.lock);
 }
 
 // 针对物理内存一段范围进行初始化
