@@ -14,10 +14,13 @@ void uartputc(char c);
 void consputc(char c);
 int	 uartgetc();
 void uartintr();
+void uartsleep(int sec);
 
 // kernelvec.c
 void kernelvec();
 void timervec(); // M mode下中断的入口
+
+void kernelvec1();
 
 // trap.c
 void trapinithart();
@@ -52,6 +55,12 @@ void vmprint_kernel(); // only for test
 // proc.c
 int			cpuid();
 struct cpu *mycpu();
+
+void procinit();
+void user1();
+void user2();
+void user1init();
+void user2init();
 
 // spinlock.c
 void initlock(struct spinlock *lk, char *name);

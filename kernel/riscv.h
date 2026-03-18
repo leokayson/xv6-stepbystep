@@ -121,6 +121,18 @@ static inline uint64 r_sepc()
 	return x;
 }
 
+static inline void w_sscratch(uint64 x)
+{
+	asm volatile("csrw sscratch, %0" : : "r"(x));
+}
+
+static inline uint64 r_sscratch()
+{
+	uint64 x;
+	asm volatile("csrr %0, sscratch" : "=r"(x));
+	return x;
+}
+
 // Machine Exception Delegation
 static inline uint64 r_medeleg()
 {
