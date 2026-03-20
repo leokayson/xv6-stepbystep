@@ -28,6 +28,8 @@ OBJS := \
 	$(K)/spinlock.o \
 	$(K)/plic.o \
 	$(K)/virtio_disk.o \
+	$(K)/swtch.o \
+	$(K)/trampoline.o \
 
 # 编译标志
 CFLAGS := -Wall -Werror -O0 \

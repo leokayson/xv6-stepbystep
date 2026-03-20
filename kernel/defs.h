@@ -1,11 +1,16 @@
 #ifndef __DEFS_H__
 #define __DEFS_H__
 
+#include "proc.h"
+#include "riscv.h"
 #include "types.h"
 
 struct cpu;
 struct spinlock;
 struct buf;
+
+struct context;
+struct process;
 
 // uart.c
 void uartinit();
@@ -20,12 +25,13 @@ void uartsleep(int sec);
 void kernelvec();
 void timervec(); // M mode下中断的入口
 
-void kernelvec1();
-
 // trap.c
 void trapinithart();
 void kernelvec(); // in kernelvec.S, calls kerneltrap().
 int	 devintr();
+
+void usertrap();
+void usertrapret();
 
 // kalloc.c
 void *kalloc(void);
@@ -51,6 +57,14 @@ void printfinit(void);
 void kvminit(void);
 void kvminithart(void);
 void vmprint_kernel(); // only for test
+void kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm);
+int	 mappages(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm);
+
+pagetable_t uvmcreate();
+void		uvmfree(pagetable_t pagetable, uint64 sz);
+void		uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, bool do_free);
+void		freewalk(pagetable_t pagetable);
+void		uvmfirst(pagetable_t pagetable, uchar *src, uint sz);
 
 // proc.c
 int			cpuid();
@@ -59,8 +73,22 @@ struct cpu *mycpu();
 void procinit();
 void user1();
 void user2();
-void user1init();
-void user2init();
+void userinit1();
+void userinit2();
+
+void			proc_mapstacks(pagetable_t kpgtbl);
+int				allocpid();
+pagetable_t		proc_pagetable(struct process *p);
+void			proc_freepagetable(pagetable_t pagetable, uint64 sz);
+void			forkret();
+struct process *myproc();
+void			yield();
+void			sched();
+void			sched();
+void			scheduler();
+void            trace_next_pid(char *from);
+
+void userinit();
 
 // spinlock.c
 void initlock(struct spinlock *lk, char *name);
@@ -79,7 +107,10 @@ void plic_complete(int irq);
 // virtio_disk.c
 void virtio_disk_init(void);
 void virtio_disk_rw(struct buf *b, bool is_write);
-void  virtio_disk_intr(void);
+void virtio_disk_intr(void);
 void virtio_disk_test(void);
+
+// swtch.S
+void swtch(struct context *old, struct context *new);
 
 #endif // !__DEFS_H__
