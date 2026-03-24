@@ -30,6 +30,7 @@ OBJS := \
 	$(K)/virtio_disk.o \
 	$(K)/swtch.o \
 	$(K)/trampoline.o \
+	$(K)/syscall.o \
 
 # 编译标志
 CFLAGS := -Wall -Werror -O0 \

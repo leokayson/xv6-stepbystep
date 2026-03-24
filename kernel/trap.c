@@ -107,6 +107,11 @@ void usertrap(void)
 	// save user program counter.
 	p->trapframe->epc = r_sepc();
 
+	/*
+		8 -> Environment call from U-Mode
+		9 -> Environment call from S-Mode
+		11 -> Environment call from M-Mode
+	*/
 	if (r_scause() == 8) {
 		printf("System call\n");
 		// system call
@@ -116,13 +121,13 @@ void usertrap(void)
 
 		// sepc points to the ecall instruction,
 		// but we want to return to the next instruction.
-		p->trapframe->epc += 4;
+		p->trapframe->epc += 4; // 执行epc寄存器下一条指令，必须修改中断入口
 
-		// an interrupt will change sepc, scause, and sstatus,
-		// so enable only now that we're done with those registers.
-		intr_on();
+		// 暂时注释
+		// 后续打开，防止系统调用长时间执行，无法相应设备中断，导致系统卡顿现象
+		// intr_on();
 
-		// syscall();
+		syscall();
 	} else if (which_dev != 0) {
 		if (which_dev == 1) {
 			printf("PLIC IRq\n");

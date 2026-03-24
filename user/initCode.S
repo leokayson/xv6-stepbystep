@@ -5,10 +5,13 @@
 
 .globl start
 start:
-        la a0, 1
-        la a1, 2
-        la a2, 0
-        add a2, a0, a1
+        li a0, 0x22
+        li a1, 0x33
+        li a7, 0x16 # 22: system call
+        ecall
+        
+        li a0, 0x44
+        li a1, 0x55
         j start
 
 init:

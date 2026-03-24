@@ -86,7 +86,7 @@ void			yield();
 void			sched();
 void			sched();
 void			scheduler();
-void            trace_next_pid(char *from);
+void			trace_next_pid(char *from);
 
 void userinit();
 
@@ -112,5 +112,10 @@ void virtio_disk_test(void);
 
 // swtch.S
 void swtch(struct context *old, struct context *new);
+
+// syscall.s
+uint64 systest();
+void   syscall();
+#define NELEM(x) (sizeof(x) / sizeof(x[0]))
 
 #endif // !__DEFS_H__
