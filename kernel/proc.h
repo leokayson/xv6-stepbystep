@@ -33,14 +33,7 @@ struct cpu {
 	int				intr_is_enabled; // 中断关闭前的中断状态
 };
 
-enum procstate { 
-	UNUSED, 
-	USED, 
-	SLEEPING, 
-	RUNNABLE, 
-	RUNNING, 
-	ZOMBIE 
-};
+enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // per-process data for the trap handling code in trampoline.S.
 // sits in a page by itself just under the trampoline page in the
@@ -99,7 +92,7 @@ struct process {
 
 	// p->lock must be held when using these:
 	enum procstate state; // Process state
-	// void		  *chan; // If non-zero, sleeping on chan
+	void		  *chan; // If non-zero, sleeping on chan. 保存睡眠原因
 	// int			   killed; // If non-zero, have been killed
 	// int			   xstate; // Exit status to be returned to parent's wait
 	int pid; // Process ID
@@ -108,7 +101,7 @@ struct process {
 	// struct proc *parent; // Parent process
 
 	// these are private to the process, so p->lock need not be held.
-	uint64 kstack; // Virtual address of kernel stack
+	uint64			  kstack; // Virtual address of kernel stack
 	uint64			  sz; // Size of process memory (bytes)
 	pagetable_t		  pagetable; // User page table
 	struct trapframe *trapframe; // data page for trampoline.S

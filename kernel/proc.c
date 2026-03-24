@@ -5,6 +5,7 @@
 #include "proc.h"
 #include "memlayout.h"
 #include "spinlock.h"
+#include "sleeplock.h"
 
 extern char		trampoline[]; // defined in trampoline.S
 struct cpu		cpus[NCPU];
@@ -12,6 +13,8 @@ struct process	proc[NPROC];
 uchar			stack1[PGSIZE];
 uchar			stack2[PGSIZE];
 struct spinlock pid_lock;
+int nextpid = 1;
+struct spinlock pid_lock; // 全局进程号锁
 
 static int next_runnable_pid(struct process *current)
 {
@@ -59,7 +62,6 @@ struct cpu *mycpu(void)
 	return c;
 }
 
-int nextpid = 1;
 /*
 	void procinit();
 	void user1();
@@ -74,7 +76,6 @@ int nextpid = 1;
 	void forkret();
 	struct process *myproc();
 	void yield();
-	void sched();
 	void sched();
 	void scheduler();
 	void userinit();
@@ -460,5 +461,37 @@ void uartsleep(int sec)
 	int interval = 1000000 * 10 * sec;
 	int count	 = 0;
 	while (count++ < interval) {
+	}
+}
+
+// 将当前进程设置为睡眠状态
+void sleep(void* chan, struct spinlock *lk) {
+	struct process *p = myproc();
+	
+	acquire(&p->lock);
+	release(lk);
+	p->chan = chan;
+	p->state = SLEEPING;
+	
+	sched();
+	
+	p->chan = 0; // 之前已经切换到其他进程中了，当前进程再次被唤醒才会执行此代码
+	
+	release(&p->lock);
+	acquire(lk);
+}
+
+// 唤醒
+void wakeup(void* chan) {
+	struct process *p;
+	
+	for (p = proc; p < &proc[NPROC]; ++p) {
+		if (p != myproc()) { // 非当前进程才有可能处于睡眠状态
+			acquire(&p->lock);
+			if(p->state == SLEEPING && p->chan == chan) {
+				p->state = RUNNABLE;
+			}
+			release(&p->lock);
+		}
 	}
 }

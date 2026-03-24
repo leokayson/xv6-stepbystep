@@ -26,6 +26,7 @@ OBJS := \
 	$(K)/vm.o \
 	$(K)/proc.o \
 	$(K)/spinlock.o \
+	$(K)/sleeplock.o \
 	$(K)/plic.o \
 	$(K)/virtio_disk.o \
 	$(K)/swtch.o \

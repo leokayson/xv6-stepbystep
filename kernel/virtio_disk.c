@@ -23,8 +23,7 @@ static struct disk {
 	} info[NUM];
 
 	struct virtio_blk_req ops[NUM];
-	// TODO
-	// struct spinlock vdisk_lock;
+	struct spinlock vdisk_lock;
 } memdisk;
 
 /*
@@ -107,6 +106,8 @@ void virtio_disk_init(void)
 		6. 告知设备协商完毕
 	*/
 
+	initlock(&memdisk.vdisk_lock, "virtio_disk");
+	
 	uint32 status = 0;
 	if (Reg(VIRTIO_MMIO_MAGIC_VALUE) != 0x74726976 || Reg(VIRTIO_MMIO_VERSION) != 2 ||
 		Reg(VIRTIO_MMIO_DEVICE_ID) != 2 || Reg(VIRTIO_MMIO_VENDOR_ID) != 0x554d4551) {

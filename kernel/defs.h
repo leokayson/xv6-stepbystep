@@ -7,6 +7,7 @@
 
 struct cpu;
 struct spinlock;
+struct sleeplock;
 struct buf;
 
 struct context;
@@ -84,11 +85,14 @@ void			forkret();
 struct process *myproc();
 void			yield();
 void			sched();
-void			sched();
 void			scheduler();
 void			trace_next_pid(char *from);
 
 void userinit();
+// 将当前进程设置为睡眠状态
+void sleep(void* chan, struct spinlock *lk);
+// 唤醒
+void wakeup(void* chan);
 
 // spinlock.c
 void initlock(struct spinlock *lk, char *name);
@@ -97,6 +101,12 @@ void release(struct spinlock *lk);
 int	 holding(struct spinlock *lk);
 void critical_enter(void);
 void critical_exit(void);
+
+// sleeplock.c
+void initsleeplock(struct sleeplock *lk, char *name);
+void acquiresleep(struct sleeplock *lk);
+void releasesleep(struct sleeplock *lk);
+bool is_holdingsleep(struct sleeplock *lk);
 
 // plic.c
 void plicinit(void);
