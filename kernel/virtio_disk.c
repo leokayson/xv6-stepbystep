@@ -61,7 +61,7 @@ static void free_desc(int i)
 	memdisk.desc[i].flags = 0;
 	memdisk.desc[i].next  = 0;
 	memdisk.is_free[i]	  = TRUE;
-	// wakeup(&memdisk.is_free[0]);
+	wakeup(&memdisk.is_free[0]);
 }
 
 // 分配3个描述符
@@ -191,13 +191,16 @@ void virtio_disk_rw(struct buf *b, bool is_write)
 {
 	uint64 sector = b->blockno * (BSIZE / 512);
 
+	acquire(&memdisk.vdisk_lock);
+
 	// 3 desc: type/reserved/sector; data; 1B status result
 	int idx[3];
 	while (1) {
 		if (alloc3_desc(idx) == 0) {
 			break;
 		}
-		// TODO 请求不成功，睡眠当前线程等待
+
+		sleep(&memdisk.is_free[0], &memdisk.vdisk_lock);
 	}
 
 	// 格式化3个描述符
@@ -246,17 +249,19 @@ void virtio_disk_rw(struct buf *b, bool is_write)
 	// printf("VA1");
 	// Wait for virtio_memdisk_intr() to say request has finished
 	while (b->disk == 1) {
-		// TODO 增加睡眠锁等待
+		sleep(b, &memdisk.vdisk_lock);
 	}
 	// printf("VA2");
 
 	memdisk.info[idx[0]].b = 0;
 	free_chain(idx[0]);
+
+	release(&memdisk.vdisk_lock);
 }
 
 void virtio_disk_intr(void)
 {
-	// TODO 增加锁
+	acquire(&memdisk.vdisk_lock);
 
 	// 告知虚拟磁盘设备我们可以响应下一个中断（一次可以完成多个）
 	Reg(VIRTIO_MMIO_INTERRUPT_ACK) = Reg(VIRTIO_MMIO_INTERRUPT_STATUS) & 0x3;
@@ -272,10 +277,12 @@ void virtio_disk_intr(void)
 
 		struct buf *b = memdisk.info[id].b;
 		b->disk		  = 0; // disk is done with buf
+		wakeup(b);
 
-		// TODO 唤醒
 		memdisk.used_idx += 1;
 	}
+
+	release(&memdisk.vdisk_lock);
 }
 
 void virtio_disk_test(void)

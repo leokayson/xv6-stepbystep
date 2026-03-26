@@ -128,4 +128,12 @@ uint64 systest();
 void   syscall();
 #define NELEM(x) (sizeof(x) / sizeof(x[0]))
 
+// bio.c
+void binit();
+struct buf *bread(uint dev, uint blocko);
+void bwrite(struct buf *b);
+void bpin(struct buf *b);
+void bunpin(struct buf *b);
+void brelse(struct buf *b);
+
 #endif // !__DEFS_H__
