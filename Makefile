@@ -33,6 +33,7 @@ OBJS := \
 	$(K)/trampoline.o \
 	$(K)/syscall.o \
 	$(K)/bio.o \
+	$(K)/log.o \
 
 # 编译标志
 CFLAGS := -Wall -Werror -O0 \

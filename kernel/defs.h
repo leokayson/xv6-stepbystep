@@ -8,6 +8,7 @@
 struct cpu;
 struct spinlock;
 struct sleeplock;
+struct superblock;
 struct buf;
 
 struct context;
@@ -135,5 +136,11 @@ void bwrite(struct buf *b);
 void bpin(struct buf *b);
 void bunpin(struct buf *b);
 void brelse(struct buf *b);
+
+// log.c
+void initlog(int dev, struct superblock *sb);
+void log_write(struct buf *b);
+void begin_op();
+void end_op();
 
 #endif // !__DEFS_H__
