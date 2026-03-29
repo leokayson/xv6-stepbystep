@@ -111,4 +111,30 @@ struct process {
 	char name[16]; // Process name (debugging)
 };
 
+int			cpuid();
+struct cpu *mycpu();
+
+void procinit();
+void user1();
+void user2();
+void userinit1();
+void userinit2();
+
+void			proc_mapstacks(pagetable_t kpgtbl);
+int				allocpid();
+pagetable_t		proc_pagetable(struct process *p);
+void			proc_freepagetable(pagetable_t pagetable, uint64 sz);
+void			forkret();
+struct process *myproc();
+void			yield();
+void			sched();
+void			scheduler();
+void			trace_next_pid(char *from);
+
+void userinit();
+// 将当前进程设置为睡眠状态
+void sleep(void* chan, struct spinlock *lk);
+// 唤醒
+void wakeup(void* chan);
+
 #endif // !__PROC_H__

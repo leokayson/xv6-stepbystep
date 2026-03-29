@@ -3,6 +3,12 @@
 #include "riscv.h"
 #include "defs.h"
 #include "memlayout.h"
+#include "printf.h"
+#include "trap.h"
+#include "uart.h"
+#include "plic.h"
+#include "virtio.h"
+#include "syscall.h"
 
 uint32				  g_switch = 1; // 进程切换标志位
 extern struct process proc[]; // defined in proc.c

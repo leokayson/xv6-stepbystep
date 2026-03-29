@@ -1,7 +1,12 @@
-#include "defs.h"
 #include "types.h"
 #include "riscv.h"
 #include "memlayout.h"
+#include "printf.h"
+#include "kalloc.h"
+#include "string.h"
+#include "vm.h"
+#include "proc.h"
+#include "kalloc.h"
 
 // 内核页表
 pagetable_t kernel_page_table;

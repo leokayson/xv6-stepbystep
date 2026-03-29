@@ -5,7 +5,12 @@
 #include "proc.h"
 #include "memlayout.h"
 #include "spinlock.h"
-#include "sleeplock.h"
+#include "printf.h"
+#include "uart.h"
+#include "kalloc.h"
+#include "vm.h"
+#include "trap.h"
+#include "string.h"
 
 extern char		trampoline[]; // defined in trampoline.S
 struct cpu		cpus[NCPU];

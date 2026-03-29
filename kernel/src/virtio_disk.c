@@ -1,10 +1,12 @@
-#include "defs.h"
 #include "fs.h"
 #include "memlayout.h"
 #include "types.h"
 #include "virtio.h"
 #include "riscv.h"
-#include "buf.h"
+#include "printf.h"
+#include "string.h"
+#include "kalloc.h"
+#include "proc.h"
 
 #define Reg(r) (*(volatile uint32 *)(VIRTIO0 + r))
 

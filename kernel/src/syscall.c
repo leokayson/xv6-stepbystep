@@ -1,7 +1,8 @@
-#include "defs.h"
 #include "proc.h"
 #include "types.h"
 #include "syscall.h"
+#include "printf.h"
+#include "uart.h"
 
 uint64 systest();
 

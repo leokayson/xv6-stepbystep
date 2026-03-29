@@ -1,8 +1,9 @@
 #include "memlayout.h"
-#include "defs.h"
 #include "riscv.h"
 #include "types.h"
 #include "spinlock.h"
+#include "string.h"
+#include "printf.h"
 
 extern char end[]; // kernel.ld 中定义，内核镜像结束地址
 

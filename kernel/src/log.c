@@ -1,11 +1,12 @@
 #include "types.h"
-#include "riscv.h"
-#include "defs.h"
 #include "param.h"
 #include "spinlock.h"
-#include "sleeplock.h"
 #include "fs.h"
-#include "buf.h"
+#include "virtio.h"
+#include "printf.h"
+#include "proc.h"
+#include "bio.h"
+#include "string.h"
 
 /*
     文件系统日志层

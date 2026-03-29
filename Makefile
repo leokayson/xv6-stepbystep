@@ -14,33 +14,34 @@ OBJDUMP := $(TOOLPREFIX)objdump
 
 # --- 核心修改：定义 OBJS 变量 ---
 OBJS := \
-	$(K)/entry.o \
-	$(K)/kernelvec.o \
-	$(K)/start.o \
-	$(K)/uart.o \
-	$(K)/main.o \
-	$(K)/trap.o \
-	$(K)/kalloc.o \
-	$(K)/string.o \
-	$(K)/printf.o \
-	$(K)/vm.o \
-	$(K)/proc.o \
-	$(K)/spinlock.o \
-	$(K)/sleeplock.o \
-	$(K)/plic.o \
-	$(K)/virtio_disk.o \
-	$(K)/swtch.o \
-	$(K)/trampoline.o \
-	$(K)/syscall.o \
-	$(K)/bio.o \
-	$(K)/log.o \
+	$(K)/src/entry.o \
+	$(K)/src/kernelvec.o \
+	$(K)/src/start.o \
+	$(K)/src/uart.o \
+	$(K)/src/main.o \
+	$(K)/src/trap.o \
+	$(K)/src/kalloc.o \
+	$(K)/src/string.o \
+	$(K)/src/printf.o \
+	$(K)/src/vm.o \
+	$(K)/src/proc.o \
+	$(K)/src/spinlock.o \
+	$(K)/src/sleeplock.o \
+	$(K)/src/plic.o \
+	$(K)/src/virtio_disk.o \
+	$(K)/src/swtch.o \
+	$(K)/src/trampoline.o \
+	$(K)/src/syscall.o \
+	$(K)/src/bio.o \
+	$(K)/src/log.o \
 
 # 编译标志
 CFLAGS := -Wall -Werror -O0 \
 	-fno-omit-frame-pointer -ggdb \
 	-MD -mcmodel=medany \
 	-ffreestanding -nostdlib -fno-common \
-	-fno-stack-protector -fno-pie
+	-fno-stack-protector -fno-pie \
+	-I$(K)/inc
 
 # 链接标志
 # 注意：这里保留 -Wl, 是因为我们将使用 CC (gcc) 来执行链接命令
@@ -86,7 +87,7 @@ gdb: build fs.img
 	gdb -q -x gdbinit
 
 clean:
-	rm -f $(K)/*.o $(K)/*.d $(K)/kernel.elf $(K)/*.asm $(K)/*.sym fs.img
+	rm -f $(K)/src/*.o $(K)/src/*.d $(K)/kernel.elf $(K)/kernel.elf.objdump.txt $(K)/*.asm $(K)/*.sym fs.img
 
 rebuild: clean build
 

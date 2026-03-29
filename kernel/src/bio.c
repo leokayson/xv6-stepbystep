@@ -1,8 +1,8 @@
-#include "defs.h"
 #include "types.h"
-#include "buf.h"
+#include "virtio.h"
 #include "param.h"
 #include "spinlock.h"
+#include "printf.h"
 
 /*
     bcache: 缓存常用块，内存中以双链表形式存放

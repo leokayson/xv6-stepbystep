@@ -1,6 +1,8 @@
 #ifndef __SYSCALL_H__
 #define __SYSCALL_H__
 
+#include "types.h"
+
 // System call numbers
 #define SYS_fork   1
 #define SYS_exit   2
@@ -24,5 +26,9 @@
 #define SYS_mkdir  20
 #define SYS_close  21
 #define SYS_test   22
+
+uint64 systest();
+void   syscall();
+#define NELEM(x) (sizeof(x) / sizeof(x[0]))
 
 #endif // !__SYSCALL_H__

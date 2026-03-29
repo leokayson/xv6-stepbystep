@@ -5,13 +5,9 @@
 #include <stdarg.h>
 
 #include "types.h"
-#include "defs.h"
 #include "spinlock.h"
-// #include "sleeplock.h"
-// #include "fs.h"
-// #include "file.h"
 #include "memlayout.h"
-// #include "proc.h"
+#include "uart.h"
 
 volatile int panicked = 0;
 

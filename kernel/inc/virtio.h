@@ -2,6 +2,8 @@
 #define __VIRTO_H__
 
 #include "types.h"
+#include "fs.h"
+#include "sleeplock.h"
 
 //
 // virtio device definitions.
@@ -99,5 +101,22 @@ struct virtio_blk_req {
 	uint32 reserved;
 	uint64 sector;
 };
+
+struct buf {
+	int				 valid; // has data been read from disk?
+	int				 disk; // does disk "own" buf?
+	uint			 dev;
+	uint			 blockno;
+	struct sleeplock lock;
+	uint			 refcnt;
+	struct buf		*prev; 	// LRU (Last Recently Used) cache list
+	struct buf		*next;	// MRU (Most Recently Used) cache list
+	uchar			 data[BSIZE];
+};
+
+void virtio_disk_init(void);
+void virtio_disk_rw(struct buf *b, bool is_write);
+void virtio_disk_intr(void);
+void virtio_disk_test(void);
 
 #endif // !__VIRTO_H__

@@ -1,7 +1,10 @@
-#include "defs.h"
-#include "riscv.h"
 #include "proc.h"
-#include "types.h"
+#include "uart.h"
+#include "trap.h"
+#include "kalloc.h"
+#include "vm.h"
+#include "plic.h"
+#include "virtio.h"
 
 extern struct process proc[];
 
