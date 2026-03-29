@@ -69,7 +69,6 @@ void kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm)
 	}
 }
 
-
 // 返回页表中va对应pte地址，页表项page table entry
 // 若alloc为0, 则不创建页表项，否则创建页表项
 /*
@@ -219,6 +218,78 @@ void uvmfirst(pagetable_t pagetable, uchar *src, uint sz)
 	memset(mem, 0, PGSIZE);
 	mappages(pagetable, 0, (uint64)mem, PGSIZE, PTE_RWX | PTE_U);
 	memmove(mem, src, sz);
+}
+
+// Look up a virtual address, return the physical address,
+// or 0 if not mapped.
+// Can only be used to look up user pages.
+uint64 walkaddr(pagetable_t pagetable, uint64 va)
+{
+	pte_t *pte;
+	uint64 pa;
+
+	if (va >= MAXVA)
+		return 0;
+
+	pte = walk(pagetable, va, 0);
+	if (pte == 0)
+		return 0;
+	if ((*pte & PTE_V) == 0)
+		return 0;
+	if ((*pte & PTE_U) == 0)
+		return 0;
+	pa = PTE2PA(*pte);
+	return pa;
+}
+
+// 内核 -> 用户va
+int copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
+{
+	uint64 n, va0, pa0;
+
+	while (len > 0) {
+		va0 = PGROUNDDOWN(dstva);
+		pa0 = walkaddr(pagetable, va0);
+		if (pa0 == 0) {
+			return -1;
+		}
+		n = PGSIZE - (dstva - va0);
+		if (n > len) {
+			n = len;
+		}
+		memmove((void *)(pa0 + (dstva - va0)), src, n);
+		
+		len -= n;
+		src += n;
+		dstva = va0 + PGSIZE;
+	}
+	return 0;
+}
+
+// 用户va -> 内核
+int copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
+{
+	uint64 n, va0, pa0;
+
+	while (len > 0) {
+		va0 = PGROUNDDOWN(srcva);
+		pa0 = walkaddr(pagetable, va0);
+		if (pa0 == 0) {
+			return -1;
+		}
+		n = PGSIZE - (srcva - va0);
+		if (n > len) {
+			n = len;
+		}
+		memmove(dst, (void *)(pa0 + (srcva - va0)), n);
+		
+		len -= n;
+		dst += n;
+		srcva = va0 + PGSIZE;
+		
+	}
+	
+	return 0;
 }
 
 void _pteprint(pagetable_t pagetable, int level)

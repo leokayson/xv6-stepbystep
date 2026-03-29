@@ -34,6 +34,7 @@ OBJS := \
 	$(K)/src/syscall.o \
 	$(K)/src/bio.o \
 	$(K)/src/log.o \
+	$(K)/src/fs.o \
 
 # 编译标志
 CFLAGS := -Wall -Werror -O0 \

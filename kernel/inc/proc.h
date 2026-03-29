@@ -103,12 +103,12 @@ struct process {
 	// these are private to the process, so p->lock need not be held.
 	uint64			  kstack; // Virtual address of kernel stack
 	uint64			  sz; // Size of process memory (bytes)
-	pagetable_t		  pagetable; // User page table
+	pagetable_t		  pagetable; // User page table, 进程页表
 	struct trapframe *trapframe; // data page for trampoline.S
 	struct context	  context; // swtch() here to run process
 	// struct file *ofile[NOFILE];  // Open files
-	// struct inode *cwd;           // Current directory
-	char name[16]; // Process name (debugging)
+	struct inode *cwd; // Current directory
+	char		  name[16]; // Process name (debugging)
 };
 
 int			cpuid();
@@ -133,8 +133,14 @@ void			trace_next_pid(char *from);
 
 void userinit();
 // 将当前进程设置为睡眠状态
-void sleep(void* chan, struct spinlock *lk);
+void sleep(void *chan, struct spinlock *lk);
 // 唤醒
-void wakeup(void* chan);
+void wakeup(void *chan);
+
+// 内核 -> 内核/用户 in proc
+int either_copyout(bool is_user_dst, uint64 dst, char *src, uint64 len);
+// 内核/用户 -> 内核 in proc
+int either_copyin(bool is_user_src, char *dst, uint64 src, uint64 len);
+
 
 #endif // !__PROC_H__

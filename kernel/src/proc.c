@@ -500,3 +500,25 @@ void wakeup(void* chan) {
 		}
 	}
 }
+
+// 内核 -> 内核/用户 in proc
+int either_copyout(bool is_user_dst, uint64 dst, char *src, uint64 len) {
+	struct process *p = myproc();
+	if (is_user_dst) {
+		return copyout(p->pagetable, dst, src, len);
+	} else {
+		memmove((char *)dst, src, len);
+		return 0;
+	}
+}
+
+// 内核/用户 -> 内核 in proc
+int either_copyin(bool is_user_src, char *dst, uint64 src, uint64 len) {
+	struct process *p = myproc();
+	if (is_user_src) {
+		return copyin(p->pagetable, dst, src, len);
+	} else {
+		memmove(dst, (char *)src, len);
+		return 0;
+	}
+}
