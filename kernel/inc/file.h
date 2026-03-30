@@ -70,4 +70,37 @@ struct stat {
 	uint64	  size; // Size of file in bytes
 };
 
+// map major device number to device functions.
+struct devsw {
+	int (*read)(int, uint64, int);
+	int (*write)(int, uint64, int);
+};
+
+/* ====================== file.h ====================== */
+typedef enum { 
+	F_NONE		= 0, 
+	F_PIPE		= 1, 
+	F_INODE		= 2, 
+	F_DEVICE	= 3 
+} filetype;
+
+struct file {
+	filetype type;
+	int		 ref; // reference count
+	bool	 readable;
+	bool	 writable;
+	// struct pipe	 *pipe; 	// FD_PIPE
+	struct inode *ip; // FD_INODE and FD_DEVICE
+	uint		  off; // FD_INODE
+	short		  major; // FD_DEVICE
+};
+
+void		 fileinit();
+struct file *filealloc();
+struct file *fileup(struct file *f);
+void		 fileclose(struct file *f);
+int			 filestat(struct file *f, uint64 addr);
+int			 fileread(struct file *f, uint64 addr, int n);
+int			 filewrite(struct file *f, uint64 addr, int n);
+
 #endif // !__FILE_H__

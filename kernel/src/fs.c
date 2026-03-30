@@ -30,7 +30,7 @@ static uint bmap(struct inode *ip, uint bn);
 
 // inodes 的分配、封信、释放
 struct inode		*ialloc(uint dev, inodetype type);
-struct inode		*idup(struct inode *ip);
+struct inode		*idup(struct inode *ip);	// TODO: what's dup meaning here?
 static struct inode *iget(uint dev, uint inum);
 void				 iinit();
 void				 iupdate(struct inode *ip);
