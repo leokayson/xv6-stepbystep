@@ -15,7 +15,7 @@ static struct disk {
 	struct virtq_avail *avail; // OS -> Physical Device
 	struct virtq_used  *used; // Physical Device -> OS
 
-	bool   is_free[NUM];
+	bool_t   is_free[NUM];
 	uint16 used_idx;
 
 	// 跟踪每个描述符状态信息，比表示读写块成功
@@ -189,7 +189,7 @@ void virtio_disk_init(void)
 }
 
 // 读写磁盘块
-void virtio_disk_rw(struct buf *b, bool is_write)
+void virtio_disk_rw(struct buf *b, bool_t is_write)
 {
 	uint64 sector = b->blockno * (BSIZE / 512);
 

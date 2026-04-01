@@ -81,8 +81,8 @@ void		  iunlockput(struct inode *ip);
 // inode 内容的获取、写入
 void itrunc(struct inode *ip);
 void stati(struct inode *ip, struct stat *st);
-int	 readi(struct inode *ip, bool is_user_dst, uint64 dst, uint off, uint n);
-int	 writei(struct inode *ip, bool is_user_src, uint64 src, uint off, uint n);
+int	 readi(struct inode *ip, bool_t is_user_dst, uint64 dst, uint off, uint n);
+int	 writei(struct inode *ip, bool_t is_user_src, uint64 src, uint off, uint n);
 
 // directories 内容的获取、写入
 int			  namecmp(const char *s, const char *t);

@@ -126,7 +126,7 @@ void uvmfree(pagetable_t pagetable, uint64 sz)
 // Remove npages of mappings starting from va. va must be
 // page-aligned. The mappings must exist.
 // Optionally free the physical memory.
-void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, bool do_free)
+void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, bool_t do_free)
 {
 	uint64 a;
 	pte_t *pte;
@@ -258,7 +258,7 @@ int copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 			n = len;
 		}
 		memmove((void *)(pa0 + (dstva - va0)), src, n);
-		
+
 		len -= n;
 		src += n;
 		dstva = va0 + PGSIZE;
@@ -282,14 +282,50 @@ int copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 			n = len;
 		}
 		memmove(dst, (void *)(pa0 + (srcva - va0)), n);
-		
+
 		len -= n;
 		dst += n;
 		srcva = va0 + PGSIZE;
-		
 	}
-	
+
 	return 0;
+}
+
+// 拷贝用户空间字符串
+int copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
+{
+	uint64 n, va0, pa0;
+	int	   got_pull = 0;
+
+	while (got_pull == 0 && max > 0) {
+		va0 = PGROUNDDOWN(srcva);
+		pa0 = walkaddr(pagetable, va0);
+		if (pa0 == 0) {
+			return -1;
+		}
+		n = PGSIZE - (srcva - va0);
+		if (n > max) {
+			n = max;
+		}
+		char *p = (void *)(pa0 + (srcva - va0));
+		while (n > 0) {
+			if (*p == '\0') {
+				*dst	 = '\0';
+				got_pull = 1;
+				break;
+			} else {
+				*dst = *p;
+			}
+			--n;
+			--max;
+			p++;
+			dst++;
+		}
+
+		srcva = va0 + PGSIZE;
+	}
+
+	return got_pull ? 0 : -1;
 }
 
 void _pteprint(pagetable_t pagetable, int level)

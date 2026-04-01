@@ -4,6 +4,7 @@
 #include "riscv.h"
 #include "types.h"
 #include "spinlock.h"
+#include "param.h"
 
 // 在内核上下文切换式，使用context
 // 保存对象为属性callee的所有寄存器
@@ -106,9 +107,9 @@ struct process {
 	pagetable_t		  pagetable; // User page table, 进程页表
 	struct trapframe *trapframe; // data page for trampoline.S
 	struct context	  context; // swtch() here to run process
-	// struct file *ofile[NOFILE];  // Open files
-	struct inode *cwd; // Current directory
-	char		  name[16]; // Process name (debugging)
+	struct file		 *ofile[NOFILE]; // 文件对象
+	struct inode	 *cwd; // Current directory
+	char			  name[16]; // Process name (debugging)
 };
 
 int			cpuid();
@@ -138,9 +139,8 @@ void sleep(void *chan, struct spinlock *lk);
 void wakeup(void *chan);
 
 // 内核 -> 内核/用户 in proc
-int either_copyout(bool is_user_dst, uint64 dst, char *src, uint64 len);
+int either_copyout(bool_t is_user_dst, uint64 dst, char *src, uint64 len);
 // 内核/用户 -> 内核 in proc
-int either_copyin(bool is_user_src, char *dst, uint64 src, uint64 len);
-
+int either_copyin(bool_t is_user_src, char *dst, uint64 src, uint64 len);
 
 #endif // !__PROC_H__

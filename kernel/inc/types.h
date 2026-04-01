@@ -14,6 +14,6 @@ typedef uint64 pde_t;
 typedef enum {
 	FALSE = 0,
 	TRUE  = 1,
-} bool;
+} bool_t;
 
 #endif /* __TYPES_H__ */

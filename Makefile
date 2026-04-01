@@ -36,6 +36,8 @@ OBJS := \
 	$(K)/src/log.o \
 	$(K)/src/fs.o \
 	$(K)/src/file.o \
+	$(K)/src/sysfile.o \
+	$(K)/src/sysproc.o \
 
 # 编译标志
 CFLAGS := -Wall -Werror -O0 \
@@ -78,8 +80,14 @@ QEMU_FLAGS += -global virtio-mmio.force-legacy=false
 QEMU_FLAGS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMU_FLAGS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
-fs.img:
-	dd if=/dev/urandom of=fs.img bs=1M count=6
+# fs.img:
+# 	dd if=/dev/urandom of=fs.img bs=1M count=6
+
+mkfs/mkfs: mkfs/mkfs.c 
+	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
+
+fs.img: mkfs/mkfs
+	mkfs/mkfs fs.img
 
 qemu: build fs.img
 	$(QEMU) $(QEMU_FLAGS)
@@ -89,7 +97,7 @@ gdb: build fs.img
 	gdb -q -x gdbinit
 
 clean:
-	rm -f $(K)/src/*.o $(K)/src/*.d $(K)/kernel.elf $(K)/kernel.elf.objdump.txt $(K)/*.asm $(K)/*.sym fs.img
+	rm -f $(K)/src/*.o $(K)/src/*.d $(K)/kernel.elf $(K)/kernel.elf.objdump.txt $(K)/*.asm $(K)/*.sym fs.img mkfs/mkfs
 
 rebuild: clean build
 

@@ -46,7 +46,7 @@ struct inode {
 	uint			 inum; // Inode number
 	int				 ref; // Reference count
 	struct sleeplock lock; // protects everything below here
-	bool			 is_valid; // inode has been read from disk?
+	bool_t			 is_valid; // inode has been read from disk?
 
 	inodetype type; // copy of disk inode
 	short	  major;
@@ -87,8 +87,8 @@ typedef enum {
 struct file {
 	filetype type;
 	int		 ref; // reference count
-	bool	 readable;
-	bool	 writable;
+	bool_t	 readable;
+	bool_t	 writable;
 	// struct pipe	 *pipe; 	// FD_PIPE
 	struct inode *ip; // FD_INODE and FD_DEVICE
 	uint		  off; // FD_INODE

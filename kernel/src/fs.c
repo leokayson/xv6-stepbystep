@@ -50,8 +50,8 @@ void				 iunlockput(struct inode *ip);
 // inode 内容的获取、写入
 void itrunc(struct inode *ip);
 void stati(struct inode *ip, struct stat *st);
-int	 readi(struct inode *ip, bool is_user_dst, uint64 dst, uint off, uint n);
-int	 writei(struct inode *ip, bool is_user_src, uint64 src, uint off, uint n);
+int	 readi(struct inode *ip, bool_t is_user_dst, uint64 dst, uint off, uint n);
+int	 writei(struct inode *ip, bool_t is_user_src, uint64 src, uint off, uint n);
 
 // directories 内容的获取、写入
 static char	 *skipelem(char *path, char *name);
@@ -60,7 +60,7 @@ struct inode *dirlookup(struct inode *dp, char *name, uint *poff);
 int			  dirlink(struct inode *dp, char *name, uint inum);
 
 // paths 内容的获取、写入
-static struct inode *namex(char *path, bool nameiparent, char *name);
+static struct inode *namex(char *path, bool_t nameiparent, char *name);
 struct inode		*namei(char *path);
 struct inode		*nameiparent(char *path, char *name);
 
@@ -439,7 +439,7 @@ void stati(struct inode *ip, struct stat *st)
 }
 
 // 读取inode中指向的数据
-int readi(struct inode *ip, bool is_user_dst, uint64 dst, uint off, uint n)
+int readi(struct inode *ip, bool_t is_user_dst, uint64 dst, uint off, uint n)
 {
 	uint		tot, m;
 	struct buf *bp;
@@ -470,7 +470,7 @@ int readi(struct inode *ip, bool is_user_dst, uint64 dst, uint off, uint n)
 	return tot;
 }
 
-int writei(struct inode *ip, bool is_user_src, uint64 src, uint off, uint n)
+int writei(struct inode *ip, bool_t is_user_src, uint64 src, uint off, uint n)
 {
 	uint		tot, m;
 	struct buf *bp;
@@ -615,7 +615,7 @@ static char *skipelem(char *path, char *name)
 	return path;
 }
 
-static struct inode *namex(char *path, bool nameiparent, char *name)
+static struct inode *namex(char *path, bool_t nameiparent, char *name)
 {
 	struct inode *ip, *next;
 

@@ -27,8 +27,15 @@
 #define SYS_close  21
 #define SYS_test   22
 
+#define NELEM(x) (sizeof(x) / sizeof(x[0]))
+
 uint64 systest();
 void   syscall();
-#define NELEM(x) (sizeof(x) / sizeof(x[0]))
+
+void argint(int n, int *ip);
+void argaddr(int n, uint64 *ip);
+int fetchaddr(uint64 addr, uint64 *ip);
+int fetchstr(uint64 addr, char *buf, int max);
+int argstr(int n, char *buf, int max);
 
 #endif // !__SYSCALL_H__

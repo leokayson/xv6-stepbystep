@@ -1,3 +1,5 @@
+#include "file.h"
+#include "fs.h"
 #include "proc.h"
 #include "uart.h"
 #include "trap.h"
@@ -5,6 +7,7 @@
 #include "vm.h"
 #include "plic.h"
 #include "virtio.h"
+#include "bio.h"
 
 extern struct process proc[];
 
@@ -33,10 +36,19 @@ void main() {
     uartputs("=== Init Disk IO ===\n");
     virtio_disk_init();
 
+    uartputs("=== Init Buffer Cache ===\n");
+    binit();
+
+    uartputs("=== Init INode Cache ===\n");
+    iinit();
+
+    uartputs("=== Init File Table ===\n");
+    fileinit();
+
     uartputs("=== Init Process ===\n");
     procinit();
     userinit();
-    userinit1();
+    // userinit1();
 
     __sync_synchronize();
     scheduler();

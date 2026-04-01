@@ -26,8 +26,8 @@ void releasesleep(struct sleeplock *lk) {
     release(&lk->lk);
 }
 
-bool is_holdingsleep(struct sleeplock *lk) {
-    bool r;
+bool_t is_holdingsleep(struct sleeplock *lk) {
+    bool_t r;
     acquire(&lk->lk);
     r = lk->locked && (lk->pid == myproc()->pid);
     release(&lk->lk);

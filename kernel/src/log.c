@@ -48,7 +48,7 @@ struct log {
 	struct loghead	lh;
 } log;
 
-static void install_trans(bool is_recover);
+static void install_trans(bool_t is_recover);
 static void read_head();
 static void write_head();
 static void recover_from_log();
@@ -155,7 +155,7 @@ void end_op()
 }
 
 // Copy committed blocks from log to their home location
-static void install_trans(bool is_recover)
+static void install_trans(bool_t is_recover)
 {
 	int tail;
 
