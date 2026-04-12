@@ -99,9 +99,9 @@ struct process {
 	int pid; // Process ID
 
 	// wait_lock must be held when using this:
-	// struct proc *parent; // Parent process
+	struct process *parent; // Parent process。修改此对象必须持有wait_lock锁
 
-	// these are private to the process, so p->lock need not be held.
+	// these are private to the process, so p->lock need not be held.fd
 	uint64			  kstack; // Virtual address of kernel stack
 	uint64			  sz; // Size of process memory (bytes)
 	pagetable_t		  pagetable; // User page table, 进程页表
@@ -142,5 +142,7 @@ void wakeup(void *chan);
 int either_copyout(bool_t is_user_dst, uint64 dst, char *src, uint64 len);
 // 内核/用户 -> 内核 in proc
 int either_copyin(bool_t is_user_src, char *dst, uint64 src, uint64 len);
+
+int fork();
 
 #endif // !__PROC_H__

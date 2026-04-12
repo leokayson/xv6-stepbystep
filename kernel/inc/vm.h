@@ -13,9 +13,14 @@ int	 mappages(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm);
 pagetable_t uvmcreate();
 void		uvmfree(pagetable_t pagetable, uint64 sz);
 void		uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, bool_t do_free);
-void		freewalk(pagetable_t pagetable);
+int			uvmcopy(pagetable_t old, pagetable_t new, uint64 sz);
+uint64		uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm);
+uint64		uvmdealloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz);
+void		uvmclear(pagetable_t pagetable, uint64 va);
 void		uvmfirst(pagetable_t pagetable, uchar *src, uint sz);
-uint64		walkaddr(pagetable_t pagetable, uint64 va);
+
+void   freewalk(pagetable_t pagetable);
+uint64 walkaddr(pagetable_t pagetable, uint64 va);
 
 /*
     1. 用户地址为虚拟地址，因为已经开启分页，找到物理内存地址再进行拷贝；

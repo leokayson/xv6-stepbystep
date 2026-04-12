@@ -14,7 +14,7 @@ extern char etext[]; // defined in kernel.ld
 extern char trampoline[]; // defined in trampoline.S
 
 pagetable_t kvmmake(void);
-pte_t	   *walk(pagetable_t kpgtbl, uint64 va, int alloc);
+pte_t	   *walk(pagetable_t kpgtbl, uint64 va, bool_t alloc);
 
 // 初始化内核页表
 void kvminit()
@@ -79,7 +79,7 @@ void kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm)
     12..20 9 bit of level-0 index
     0..11 12 bit of byte offset within the page
 */
-pte_t *walk(pagetable_t pagetable, uint64 va, int alloc)
+pte_t *walk(pagetable_t pagetable, uint64 va, bool_t alloc)
 {
 	if (va >= MAXVA) {
 		panic("walk to maxVA");
@@ -326,6 +326,96 @@ int copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 	}
 
 	return got_pull ? 0 : -1;
+}
+
+// 拷贝进程页表
+int uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
+{
+	pte_t *pte;
+	uint64 pa, i;
+	uint   flags;
+	char  *mem;
+
+	for (i = 0; i < sz; i += PGSIZE) {
+		if ((pte = walk(old, i, 0)) == 0) {
+			panic("uvmcopy: pte should exist");
+		}
+		if ((*pte & PTE_V) == 0) {
+			panic("uvmcopy: page not present");
+		}
+
+		pa	  = PTE2PA(*pte);
+		flags = PTE_FLAGS(*pte);
+
+		if ((mem = kalloc()) == 0) {
+			goto err;
+		}
+		memmove(mem, (char *)pa, PGSIZE);
+		if (mappages(new, i, (uint64)mem, PGSIZE, flags) != 0) {
+			kfree(mem);
+			goto err;
+		}
+	}
+
+	return 0;
+err:
+	uvmunmap(new, 0, i / PGSIZE, TRUE);
+	return -1;
+}
+
+// 分配pte和物理内存，使得用户地址从oldsz增长到newsz
+uint64 uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
+{
+	char  *mem;
+	uint64 a;
+
+	if (newsz < oldsz) {
+		return oldsz;
+	}
+
+	oldsz = PGROUNDUP(oldsz);
+	for (a = oldsz; a < newsz; a += PGSIZE) {
+		mem = kalloc();
+		if (mem == 0) {
+			uvmdealloc(pagetable, a, oldsz);
+			return 0;
+		}
+
+		memset(mem, 0, PGSIZE);
+
+		if (mappages(pagetable, a, (uint64)mem, PGSIZE, PTE_R | PTE_U | xperm) != 0) {
+			kfree(mem);
+			uvmdealloc(pagetable, a, oldsz);
+			return 0;
+		}
+	}
+
+	return newsz;
+}
+
+// 释放内存大小从oldsz到newsz
+uint64 uvmdealloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
+{
+	if (newsz >= oldsz || PGROUNDUP(newsz) >= PGROUNDUP(oldsz)) {
+		return oldsz;
+	}
+
+	int npages = PGROUNDUP(oldsz) - PGROUNDUP(newsz);
+	uvmunmap(pagetable, PGROUNDUP(newsz), npages, TRUE);
+
+	return newsz;
+}
+
+// 标记PTE无效，用户无法访问
+void uvmclear(pagetable_t pagetable, uint64 va)
+{
+	pte_t *pte;
+
+	if ((pte = walk(pagetable, va, FALSE)) == 0) {
+		panic("uvmclear");
+	}
+
+	*pte &= ~PTE_U;
 }
 
 void _pteprint(pagetable_t pagetable, int level)

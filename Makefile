@@ -3,12 +3,13 @@
 
 # 目录定义
 K := kernel
+U := user
 
 # 工具链前缀
 TOOLPREFIX := riscv64-unknown-elf-
 CC := $(TOOLPREFIX)gcc
-# AS := $(TOOLPREFIX)gas # 通常不需要单独调用 gas，gcc 会处理
-# LD := $(TOOLPREFIX)ld  # 链接时建议直接用 CC (gcc)，而不是直接用 ld
+AS := $(TOOLPREFIX)gas 				# 通常不需要单独调用 gas，gcc 会处理
+LD := $(TOOLPREFIX)ld  				# 链接时建议直接用 CC (gcc)，而不是直接用 ld
 OBJCOPY := $(TOOLPREFIX)objcopy
 OBJDUMP := $(TOOLPREFIX)objdump
 
@@ -38,6 +39,10 @@ OBJS := \
 	$(K)/src/file.o \
 	$(K)/src/sysfile.o \
 	$(K)/src/sysproc.o \
+	$(K)/src/exec.o \
+
+# OBJS += \
+# 	$(U)
 
 # 编译标志
 CFLAGS := -Wall -Werror -O0 \
@@ -49,7 +54,8 @@ CFLAGS := -Wall -Werror -O0 \
 
 # 链接标志
 # 注意：这里保留 -Wl, 是因为我们将使用 CC (gcc) 来执行链接命令
-LDFLAGS := -static -nostdlib -Wl,--no-relax -z max-page-size=4096
+LDFLAGS := -static -nostdlib -Wl, --no-relax -z max-page-size=4096
+UPROGS := $(U)/_init
 
 # 默认目标
 build: $(K)/kernel.elf
@@ -65,6 +71,7 @@ $(K)/kernel.elf: $(OBJS) $(K)/kernel.ld
 # 编译规则：C 文件
 $(K)/%.o: $(K)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
+$()
 
 # 编译规则：汇编文件
 $(K)/%.o: $(K)/%.S
@@ -86,8 +93,8 @@ QEMU_FLAGS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 mkfs/mkfs: mkfs/mkfs.c 
 	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
 
-fs.img: mkfs/mkfs
-	mkfs/mkfs fs.img
+fs.img: mkfs/mkfs $(UPROGS)
+	mkfs/mkfs fs.img $(UPROGS)
 
 qemu: build fs.img
 	$(QEMU) $(QEMU_FLAGS)
@@ -97,7 +104,7 @@ gdb: build fs.img
 	gdb -q -x gdbinit
 
 clean:
-	rm -f $(K)/src/*.o $(K)/src/*.d $(K)/kernel.elf $(K)/kernel.elf.objdump.txt $(K)/*.asm $(K)/*.sym fs.img mkfs/mkfs
+	rm -f $(K)/src/*.o $(K)/src/*.d $(K)/kernel.elf $(K)/kernel.elf.objdump.txt $(K)/*.asm $(K)/*.sym fs.img mkfs/mkfs $(UPROGS)
 
 rebuild: clean build
 
