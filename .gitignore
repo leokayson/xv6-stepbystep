@@ -9,3 +9,5 @@
 *.json
 .cache/
 .vscode/
+user/_init
+mkfs/mkfs

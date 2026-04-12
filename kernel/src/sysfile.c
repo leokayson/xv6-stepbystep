@@ -1,13 +1,16 @@
 #include "defs.h"
+#include "exec.h"
 #include "fcntl.h"
 #include "fs.h"
 #include "param.h"
 #include "proc.h"
+#include "riscv.h"
 #include "syscall.h"
 #include "types.h"
 #include "file.h"
 #include "printf.h"
 #include "log.h"
+#include "kalloc.h"
 
 __attribute__((unused)) static int isdirempty(struct inode *dp);
 static struct inode				  *create(char *path, inodetype type, short major, short minor);
@@ -288,8 +291,48 @@ uint64 sys_chdir()
 
 uint64 sys_exec()
 {
-	// TODO
-	return 0;
+	char   path[MAXPATH], *argv[MAXARG];
+	int	   i;
+	uint64 uargv, uarg;
+
+	// 参数列表 path, argv
+	argaddr(1, &uargv);
+	if (argstr(0, path, MAXPATH) < 0) {
+		return -1;
+	}
+
+	for (i = 0;; ++i) {
+		if (i >= NELEM(argv)) {
+			goto bad;
+		}
+		if (fetchaddr(uargv + sizeof(uint64) * i, (uint64 *)&uarg) < 0) {
+			goto bad;
+		}
+		if (uarg == 0) {
+			argv[i] = 0;
+			break;
+		}
+		if ((argv[i] = kalloc()) == 0) {
+			goto bad;
+		}
+		if (fetchstr(uarg, argv[i], PGSIZE) < 0) {
+			goto bad;
+		}
+	}
+
+	int ret = exec(path, argv);
+
+	for (i = 0; i < NELEM(argv) && argv[i] != 0; ++i) {
+		kfree(argv[i]);
+	}
+
+	return ret;
+bad:
+	for (i = 0; i < NELEM(argv) && argv[i] != 0; ++i) {
+		kfree(argv[i]);
+	}
+
+	return -1;
 }
 
 uint64 sys_pipe()

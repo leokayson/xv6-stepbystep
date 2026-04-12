@@ -1,4 +1,5 @@
 #include "sysproc.h"
+#include "proc.h"
 
 uint64 sys_exit(void) {
     // TODO
@@ -11,8 +12,7 @@ uint64 sys_getpid(void) {
 }
 
 uint64 sys_fork(void) {
-    // TODO
-    return 0;
+    return fork();
 }
 
 uint64 sys_wait(void) {

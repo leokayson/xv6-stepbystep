@@ -3,17 +3,30 @@
 
 # 目录定义
 K := kernel
+U := user
 
 # 工具链前缀
 TOOLPREFIX := riscv64-unknown-elf-
 CC := $(TOOLPREFIX)gcc
-# AS := $(TOOLPREFIX)gas # 通常不需要单独调用 gas，gcc 会处理
-# LD := $(TOOLPREFIX)ld  # 链接时建议直接用 CC (gcc)，而不是直接用 ld
+AS := $(TOOLPREFIX)gas 				# 通常不需要单独调用 gas，gcc 会处理
+LD := $(TOOLPREFIX)ld  				# 链接时建议直接用 CC (gcc)，而不是直接用 ld
 OBJCOPY := $(TOOLPREFIX)objcopy
 OBJDUMP := $(TOOLPREFIX)objdump
 
-# --- 核心修改：定义 OBJS 变量 ---
-OBJS := \
+# 编译标志
+CFLAGS := -Wall -Werror -O0 \
+	-fno-omit-frame-pointer -ggdb \
+	-MD -mcmodel=medany \
+	-ffreestanding -nostdlib -fno-common \
+	-fno-stack-protector -fno-pie \
+	-I$(K)/inc
+
+# 链接标志
+# 注意：这里保留 -Wl, 是因为我们将使用 CC (gcc) 来执行链接命令
+LDFLAGS := -static -nostdlib -mno-relax -z max-page-size=4096
+
+# --- 定义编译目标文件 ---
+KERNEL_OBJS := \
 	$(K)/src/entry.o \
 	$(K)/src/kernelvec.o \
 	$(K)/src/start.o \
@@ -38,36 +51,38 @@ OBJS := \
 	$(K)/src/file.o \
 	$(K)/src/sysfile.o \
 	$(K)/src/sysproc.o \
+	$(K)/src/exec.o \
 
-# 编译标志
-CFLAGS := -Wall -Werror -O0 \
-	-fno-omit-frame-pointer -ggdb \
-	-MD -mcmodel=medany \
-	-ffreestanding -nostdlib -fno-common \
-	-fno-stack-protector -fno-pie \
-	-I$(K)/inc
+USER_OBJS := \
+	$(U)/initCode.o \
+	$(U)/init.o	\
 
-# 链接标志
-# 注意：这里保留 -Wl, 是因为我们将使用 CC (gcc) 来执行链接命令
-LDFLAGS := -static -nostdlib -Wl,--no-relax -z max-page-size=4096
+UPROGS := $(U)/_init
 
 # 默认目标
 build: $(K)/kernel.elf
 
 # 链接规则：使用 $(CC) 而不是 $(LD)
 # gcc 会自动处理 -Wl, 前缀并将其传递给底层的 ld
-$(K)/kernel.elf: $(OBJS) $(K)/kernel.ld
-	$(CC) $(LDFLAGS) -T $(K)/kernel.ld -o $@ $(OBJS)
-	$(OBJDUMP) -S $(K)/kernel.elf > $K/kernel.asm
-	$(OBJDUMP) -d $(K)/kernel.elf > $K/kernel.elf.objdump.txt
-	$(OBJDUMP) -t $(K)/kernel.elf | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $(K)/kernel.sym
-
-# 编译规则：C 文件
+# Kernel 编译规则
+$(K)/kernel.elf: $(KERNEL_OBJS) $(K)/kernel.ld
+	$(CC) $(LDFLAGS) -T $(K)/kernel.ld -o $@ $(KERNEL_OBJS)
+	$(OBJDUMP) -S $@ > $(K)/kernel.asm
+	$(OBJDUMP) -d $@ > $(K)/kernel.elf.objdump.txt
+	$(OBJDUMP) -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $(K)/kernel.sym
 $(K)/%.o: $(K)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
-
-# 编译规则：汇编文件
 $(K)/%.o: $(K)/%.S
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# User 编译规则
+$(U)/_init: $(USER_OBJS) $(U)/user.ld
+	$(CC) $(LDFLAGS) -T $(U)/user.ld -o $@ $(USER_OBJS)
+	$(OBJDUMP) -S $@ > $(K)/init.asm
+	$(OBJDUMP) -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $(K)/init.sym
+$(U)/%.o: $(U)/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+$(U)/%.o: $(U)/%.S	
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # CPU 数
@@ -84,10 +99,10 @@ QEMU_FLAGS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 # 	dd if=/dev/urandom of=fs.img bs=1M count=6
 
 mkfs/mkfs: mkfs/mkfs.c 
-	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
+	gcc -Werror -Wall -I. -o $@ $<
 
-fs.img: mkfs/mkfs
-	mkfs/mkfs fs.img
+fs.img: mkfs/mkfs $(UPROGS)
+	mkfs/mkfs $@ $(UPROGS)
 
 qemu: build fs.img
 	$(QEMU) $(QEMU_FLAGS)
@@ -97,9 +112,10 @@ gdb: build fs.img
 	gdb -q -x gdbinit
 
 clean:
-	rm -f $(K)/src/*.o $(K)/src/*.d $(K)/kernel.elf $(K)/kernel.elf.objdump.txt $(K)/*.asm $(K)/*.sym fs.img mkfs/mkfs
+	rm -f $(K)/src/*.o $(K)/src/*.d $(K)/kernel.elf $(K)/kernel.elf.objdump.txt $(K)/*.asm $(K)/*.sym fs.img mkfs/mkfs $(UPROGS)
 
 rebuild: clean build
 
 # 包含自动生成的依赖文件
--include $(OBJS:.o=.d)
+-include $(KERNEL_OBJS:.o=.d)
+-include $(USER_OBJS:.o=.d)
