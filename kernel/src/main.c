@@ -1,3 +1,4 @@
+#include "console.h"
 #include "file.h"
 #include "fs.h"
 #include "proc.h"
@@ -8,13 +9,16 @@
 #include "plic.h"
 #include "virtio.h"
 #include "bio.h"
+#include "printf.h"
 
 extern struct process proc[];
 
 void main() {
     uartputs("=== Enter main ===\n");
-    uartputs("=== Init UART ===\n");
-    uartinit();
+    uartputs("=== Init console ===\n");
+    // uartinit();
+    consoleinit();
+    printfinit();
     uartputs("=== Init trap ===\n");
     trapinithart();
     

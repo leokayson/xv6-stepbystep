@@ -201,7 +201,7 @@ void virtio_disk_rw(struct buf *b, bool_t is_write)
 		if (alloc3_desc(idx) == 0) {
 			break;
 		}
-
+		// 若请求不成功，睡眠当前线程等待
 		sleep(&memdisk.is_free[0], &memdisk.vdisk_lock);
 	}
 

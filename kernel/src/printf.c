@@ -7,7 +7,7 @@
 #include "types.h"
 #include "spinlock.h"
 #include "memlayout.h"
-#include "uart.h"
+#include "console.h"
 
 volatile int panicked = 0;
 

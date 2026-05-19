@@ -94,9 +94,9 @@ struct process {
 	// p->lock must be held when using these:
 	enum procstate state; // Process state
 	void		  *chan; // If non-zero, sleeping on chan. 保存睡眠原因
-	// int			   killed; // If non-zero, have been killed
-	// int			   xstate; // Exit status to be returned to parent's wait
-	int pid; // Process ID
+	int			   killed; // If non-zero, have been killed
+	int			   xstate; // 退出码，Exit status to be returned to parent's wait
+	int			   pid; // Process ID
 
 	// wait_lock must be held when using this:
 	struct process *parent; // Parent process。修改此对象必须持有wait_lock锁
@@ -143,6 +143,14 @@ int either_copyout(bool_t is_user_dst, uint64 dst, char *src, uint64 len);
 // 内核/用户 -> 内核 in proc
 int either_copyin(bool_t is_user_src, char *dst, uint64 src, uint64 len);
 
-int fork();
+int	 fork();
+int	 killed(struct process *p);
+void setkilled(struct process *p);
+int	 kill(int pid);
+void reparent(struct process *p);
+void exit(int status);
+int	 wait(uint64 addr);
+int	 growproc(int n);
+void procdump();
 
 #endif // !__PROC_H__

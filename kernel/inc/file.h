@@ -11,10 +11,12 @@
 
 #include "types.h"
 #include "sleeplock.h"
+#include "param.h"
 
 #define NDIRECT	  12
 #define NINDIRECT (BSIZE / sizeof(uint))
 #define MAXFILE	  (NDIRECT + NINDIRECT)
+#define CONSOLE   1
 
 #define major(dev)	((dev) >> 16 & 0xFFFF)
 #define minor(dev)	((dev) & 0xFFFF)
@@ -72,8 +74,8 @@ struct stat {
 
 // map major device number to device functions.
 struct devsw {
-	int (*read)(int, uint64, int);
-	int (*write)(int, uint64, int);
+	int (*read)(bool_t, uint64, int);
+	int (*write)(bool_t, uint64, int);
 };
 
 /* ====================== file.h ====================== */
@@ -87,12 +89,12 @@ typedef enum {
 struct file {
 	filetype type;
 	int		 ref; // reference count
-	bool_t	 readable;
-	bool_t	 writable;
-	// struct pipe	 *pipe; 	// FD_PIPE
-	struct inode *ip; // FD_INODE and FD_DEVICE
-	uint		  off; // FD_INODE
-	short		  major; // FD_DEVICE
+	bool_t	 is_readable;
+	bool_t	 is_writable;
+	struct pipe	 *pipe; 	// F_PIPE
+	struct inode *ip; 		// F_INODE and F_DEVICE
+	uint		  off; 		// F_INODE
+	short		  major; 	// F_DEVICE
 };
 
 void		 fileinit();

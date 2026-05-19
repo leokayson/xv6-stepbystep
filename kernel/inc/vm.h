@@ -4,6 +4,9 @@
 #include "types.h"
 #include "riscv.h"
 
+#define SBRK_EAGER 1
+#define SBRK_LAZY  2
+
 void kvminit(void);
 void kvminithart(void);
 void vmprint_kernel(); // only for test

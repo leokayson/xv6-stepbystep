@@ -40,6 +40,7 @@ OBJS := \
 	$(K)/src/sysfile.o \
 	$(K)/src/sysproc.o \
 	$(K)/src/exec.o \
+	$(K)/src/console.o \
 
 # OBJS += \
 # 	$(U)
@@ -54,7 +55,7 @@ CFLAGS := -Wall -Werror -O0 \
 
 # 链接标志
 # 注意：这里保留 -Wl, 是因为我们将使用 CC (gcc) 来执行链接命令
-LDFLAGS := -static -nostdlib -Wl, --no-relax -z max-page-size=4096
+LDFLAGS := -static -nostdlib -Wl, -mno-relax -z max-page-size=4096
 UPROGS := $(U)/_init
 
 # 默认目标

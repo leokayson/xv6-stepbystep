@@ -1,44 +1,57 @@
-#include "defs.h"
+#include "console.h"
 #include "memlayout.h"
+#include "proc.h"
+#include "spinlock.h"
+#include "types.h"
+#include "uart.h"
 
 // the UART control registers are memory-mapped
 // at address UART0. this macro returns the
 // address of one of the registers.
 #define Reg(reg) ((volatile unsigned char *)(UART0 + (reg)))
 
-#define ReadReg(reg) (*(Reg(reg)))
+#define ReadReg(reg)	 (*(Reg(reg)))
 #define WriteReg(reg, v) (*(Reg(reg)) = (v))
 
 // the UART control registers.
 // some have different meanings for read vs write.
 // see http://byterunner.com/16550.html
-#define RHR 0                 // receive holding register (for input bytes)
-#define THR 0                 // transmit holding register (for output bytes)
-#define IER 1                 // interrupt enable register
-#define IER_RX_ENABLE (1<<0)
-#define IER_TX_ENABLE (1<<1)
-#define FCR 2                 // FIFO control register
-#define FCR_FIFO_ENABLE (1<<0)
-#define FCR_FIFO_CLEAR (3<<1) // clear the content of the two FIFOs
-#define ISR 2                 // interrupt status register
-#define LCR 3                 // line control register
-#define LCR_EIGHT_BITS (3<<0)
-#define LCR_BAUD_LATCH (1<<7) // special mode to set baud rate
-#define LSR 5                 // line status register
-#define LSR_RX_READY (1<<0)   // input is waiting to be read from RHR
-#define LSR_TX_IDLE (1<<5)    // THR can accept another character to send
+#define RHR				0 // receive holding register (for input bytes)
+#define THR				0 // transmit holding register (for output bytes)
+#define IER				1 // interrupt enable register
+#define IER_RX_ENABLE	(1 << 0)
+#define IER_TX_ENABLE	(1 << 1)
+#define FCR				2 // FIFO control register
+#define FCR_FIFO_ENABLE (1 << 0)
+#define FCR_FIFO_CLEAR	(3 << 1) // clear the content of the two FIFOs
+#define ISR				2 // interrupt status register
+#define LCR				3 // line control register
+#define LCR_EIGHT_BITS	(3 << 0)
+#define LCR_BAUD_LATCH	(1 << 7) // special mode to set baud rate
+#define LSR				5 // line status register
+#define LSR_RX_READY	(1 << 0) // input is waiting to be read from RHR
+#define LSR_TX_IDLE		(1 << 5) // THR can accept another character to send
+
+#define UART_TX_BUF_SIZE 32
+
+struct spinlock uart_tx_lock;
+char			uart_tx_buf[UART_TX_BUF_SIZE];
+uint64			uart_tx_w;
+uint64			uart_tx_r;
+
+extern volatile int panicked; // defined in printf.c
 
 void uartinit()
 {
-    /*
+	/*
         1. 关闭中断
         2. 设置波特率为38400 bps
         3. 设置数据位、停止位和校验位 （8位宽度）
         4. 清空输入和输出队列
     */
-    WriteReg(IER, 0); // 1. 关闭中断
+	WriteReg(IER, 0); // 1. 关闭中断
 
-    /*
+	/*
         DLL 计算方式：
             波特率 = 时钟频率 / (16 × 除数)
             38400 = 1843200 / (16 × 3)
@@ -48,47 +61,87 @@ void uartinit()
             高字节 (MSB) = 0x00
             低字节 (LSB) = 0x03
         */
-    WriteReg(LCR, LCR_BAUD_LATCH); // 2. 设置波特率 - 进入特殊模式
-    WriteReg(0, 0x3);   // DLL LSB
-    WriteReg(1, 0x0);   // DLL MSB
-    WriteReg(LCR, LCR_EIGHT_BITS);
+	WriteReg(LCR, LCR_BAUD_LATCH); // 2. 设置波特率 - 进入特殊模式
+	WriteReg(0, 0x3); // DLL LSB
+	WriteReg(1, 0x0); // DLL MSB
+	WriteReg(LCR, LCR_EIGHT_BITS);
 
-    WriteReg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
+	WriteReg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
 
-    // TODO: 实现IRQ_TX_ENABLE
-    WriteReg(IER, IER_RX_ENABLE);
+	// 目前只启用接受数据终端
+	WriteReg(IER, IER_RX_ENABLE | IER_TX_ENABLE);
+
+	initlock(&uart_tx_lock, "uart");
 }
 
-int uartgetc(void) {
-    if (ReadReg(LSR) & 0x1) {
-        return ReadReg(RHR);
-    } else {
-        return -1;
-    }
+int uartgetc(void)
+{
+	if (ReadReg(LSR) & 0x1) {
+		return ReadReg(RHR);
+	} else {
+		return -1;
+	}
 }
 
-void uartputc(char c) {
-    WriteReg(THR, c);
+// 若串口空闲，将字符输出到buf
+void uartstart()
+{
+	while (TRUE) {
+		if (uart_tx_w == uart_tx_r) {
+			return; // buf已满
+		}
+		if ((ReadReg(LSR) & LSR_TX_IDLE) == 0) {
+			return; // 串口忙
+		}
+
+		int c = uart_tx_buf[uart_tx_r++ % UART_TX_BUF_SIZE];
+
+		wakeup(&uart_tx_r); // 唤醒（uartputc在缓存满时已经睡眠过）
+		WriteReg(THR, c);
+	}
 }
 
-void consputc(char c) {
-    uartputc(c);
+void uartputc(char c)
+{
+	// WriteReg(THR, c);
+	acquire(&uart_tx_lock);
+	if (panicked) {
+		while (TRUE) {
+			;
+		}
+	}
+
+	while (uart_tx_w == uart_tx_r + UART_TX_BUF_SIZE) {
+		// 缓存已满
+		sleep(&uart_tx_r, &uart_tx_lock);
+	}
+
+	uart_tx_buf[uart_tx_w++ % UART_TX_BUF_SIZE] = c;
+	uartstart();
+	release(&uart_tx_lock);
 }
 
-void uartputs(char *s) {
-    while (s && *s) {
-        if (*s == '\n')
-            uartputc('\r');
-        uartputc(*s++);
-    }
+void uartputs(char *s)
+{
+	while (s && *s) {
+		if (*s == '\n')
+			uartputc('\r');
+		uartputc(*s++);
+	}
 }
 
-void uartintr() {
-    while (1) {
-        int c = uartgetc();
-        if (c  == -1) {
-            break;
-        }
-        uartputc(c);
-    }
+void uartintr()
+{
+	while (TRUE) {
+		int c = uartgetc();
+		if (c == -1) {
+			break;
+		}
+		consoleintr(c);
+	}
+
+	// 发送字符到串口缓存区
+	acquire(&uart_tx_lock);
+	uartstart();
+	release(&uart_tx_lock);
 }

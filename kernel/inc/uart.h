@@ -2,9 +2,10 @@
 #define __UART_H__
 
 void uartinit();
+void uartstart();
 void uartputs(char *s);
 void uartputc(char c);
-void consputc(char c);
+void uartputc_sync(char c);
 int	 uartgetc();
 void uartintr();
 void uartsleep(int sec);

@@ -2,6 +2,7 @@
 #include "fs.h"
 #include "log.h"
 #include "param.h"
+#include "pipe.h"
 #include "proc.h"
 #include "spinlock.h"
 #include "defs.h"
@@ -9,11 +10,12 @@
 #include "types.h"
 #include "vm.h"
 
-struct devsw devsw[NDEV];
 struct {
 	struct spinlock lock;
 	struct file		file[NFILE];
 } ftable;
+
+struct devsw devsw[NDEV];
 
 /*
     void fileinit();
@@ -78,7 +80,8 @@ void fileclose(struct file *f)
 	f->type = F_NONE;
 
 	if (f->type == F_PIPE) {
-		// TODO 关闭管道对象
+		// 管道对象，关闭
+		pipeclose(ff.pipe, ff.is_writable);
 	} else if (f->type == F_INODE || f->type == F_DEVICE) {
 		begin_op();
 		iput(ff.ip);
@@ -112,17 +115,22 @@ int fileread(struct file *f, uint64 addr, int n)
 {
 	int r = 0;
 
-	if (f->readable == FALSE) {
+	if (f->is_readable == FALSE) {
 		return -1;
 	}
 
 	switch (f->type) {
 		case F_PIPE: {
-			// TODO 管道读取
+			// 管道读取
+			r = piperead(f->pipe, addr, n);
 			break;
 		}
 		case F_DEVICE: {
-			// TODO 设备读取
+			// 设备读取，目前只支持串口设备
+			if (f->major < 0 || f->major >= NDEV || !devsw[f->major].read) {
+				return -1;
+			}
+			r = devsw[f->major].read(TRUE, addr, n);
 			break;
 		}
 		case F_INODE: {
@@ -145,17 +153,21 @@ int filewrite(struct file *f, uint64 addr, int n)
 {
 	int r, ret = 0;
 
-	if (f->writable == FALSE) {
+	if (f->is_writable == FALSE) {
 		return -1;
 	}
 
 	switch (f->type) {
 		case F_PIPE: {
-			// TODO 管道写入
+			// 管道写入
+			ret = pipewrite(f->pipe, addr, n);
 			break;
 		}
 		case F_DEVICE: {
-			// TODO 设备写入
+			// 设备写入
+			if (f->major < 0 || f->major >= NDEV || !devsw[f->major].write)
+				return -1;
+			ret = devsw[f->major].write(1, addr, n);
 			break;
 		}
 		case F_INODE: {

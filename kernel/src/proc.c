@@ -2,6 +2,7 @@
 #include "file.h"
 #include "riscv.h"
 #include "param.h"
+#include "syscall.h"
 #include "types.h"
 #include "proc.h"
 #include "memlayout.h"
@@ -13,6 +14,7 @@
 #include "trap.h"
 #include "string.h"
 #include "fs.h"
+#include "log.h"
 
 extern char		trampoline[]; // defined in trampoline.S
 struct cpu		cpus[NCPU];
@@ -22,6 +24,8 @@ uchar			stack2[PGSIZE];
 int				nextpid = 1;
 struct spinlock pid_lock; // 全局进程号的自旋锁
 struct spinlock wait_lock;
+
+struct process *initproc; // 第一个进程
 
 static int next_runnable_pid(struct process *current)
 {
@@ -87,6 +91,17 @@ struct cpu *mycpu(void)
 	void scheduler();
 	void userinit();
 	void userinit1();
+*/
+
+/*
+	int	 killed(struct process *p);
+	void setkilled(struct process *p);
+	int	 kill(int pid);
+	void reparent(struct process *p);
+	void exit(int status);
+	int	 wait(uint64 addr);
+	int	 growproc(int n);
+	void procdump();
 */
 
 // 初始化全局进程表
@@ -328,13 +343,13 @@ static void freeproc(struct process *p)
 		proc_freepagetable(p->pagetable, p->sz);
 	p->pagetable = 0;
 	//   p->sz = 0;
-	p->pid = 0;
-	//   p->parent = 0;
+	p->pid	   = 0;
+	p->parent  = 0;
 	p->name[0] = 0;
-	//   p->chan = 0;
-	//   p->killed = 0;
-	//   p->xstate = 0;
-	p->state = UNUSED;
+	p->chan	   = 0;
+	p->killed  = 0;
+	p->xstate  = 0;
+	p->state   = UNUSED;
 }
 
 // Look in the process table for an UNUSED proc.
@@ -445,8 +460,8 @@ void userinit(void)
 {
 	struct process *p;
 
-	p = allocproc();
-	// initproc = p;
+	p		 = allocproc();
+	initproc = p;
 
 	// allocate one user page and copy initcode's instructions
 	// and data into it.
@@ -610,4 +625,172 @@ int fork()
 
 	// 父进程返回子进程的pid
 	return pid;
+}
+
+int killed(struct process *p)
+{
+	int k;
+	acquire(&p->lock);
+	k = p->killed;
+	release(&p->lock);
+	return k;
+}
+
+void setkilled(struct process *p) {
+	acquire(&p->lock);
+	p->killed = TRUE;
+	release(&p->lock);
+}
+
+// 将进程杀死，实际在usertrap中执行杀死逻辑
+int	 kill(int pid) {
+	struct process *p;
+	for (p = proc; p < &proc[NPROC]; p++) {
+		acquire(&p->lock);
+		if (p->pid ==pid) {
+			p->killed = TRUE;
+			if (p->state == SLEEPING) {
+				p->state = RUNNABLE;
+			}
+			release(&p->lock);
+				return 0;
+		}
+		release(&p->lock);
+	}
+	return -1;
+}
+
+// 将进程父进程设置为init进程
+void reparent(struct process *p) {
+	struct process* child;
+
+	for (child = proc; child < &proc[NPROC]; child++) {
+		if (child->parent == p) {
+			child->parent = initproc;
+			wakeup(initproc);
+		}
+	}
+}
+
+// 结束当前进程
+void exit(int status) {
+	struct process *p = myproc();
+	if (p == initproc) {
+		panic("init exiting");
+	}
+
+	// 关闭所有打开的文件
+	for (int fd = 0; fd < NOFILE; fd++) {
+		if (p->ofile[fd]) {
+			struct file *f = p->ofile[fd];
+			fileclose(f);
+			p->ofile[fd] = NULL;
+		}
+	}
+
+	begin_op();
+	iput(p->cwd);
+	end_op();
+	p->cwd = NULL;
+
+	acquire(&wait_lock);
+	reparent(p); // 将当前进程的所有紫禁城对应父进程设置为initproc
+	wakeup(p->parent);  // 父进程可能在睡眠
+
+	acquire(&p->lock);
+	p->xstate = status;
+	p->state = ZOMBIE;
+
+	release(&wait_lock);
+
+	sched(); // 运行调度器，之后逻辑永远不会被执行
+	panic("zombie exit");
+}
+
+// 等待子进程结束，返回子进程pid，若无子进程返回-1
+int	 wait(uint64 addr) {
+	struct process *child;
+	struct process *parent = myproc();
+	int havekids, pid;
+
+	acquire(&wait_lock);
+	while (TRUE) {
+		havekids = FALSE;
+
+		for (child = proc; child < &proc[NPROC]; child++) {
+			if (child->parent == parent) {
+				acquire(&child->lock);
+				havekids = TRUE;
+				if (child->state == ZOMBIE) {
+					if (addr == 0 || copyout(parent->pagetable, addr, (char *)&child->xstate, sizeof(child->xstate)) == 0) {
+						pid = child->pid;
+						freeproc(child);
+					} else {
+						pid = -1;
+					}
+					
+					release(&child->lock);
+					release(&wait_lock);
+					return pid;
+				}
+				release(&child->lock);
+			}
+		}
+
+		if (!havekids || killed(parent)) {
+			release(&wait_lock);
+			return -1;
+		}
+
+		sleep(parent, &wait_lock);
+	}
+}
+
+// 增加或减少用户镍村
+int	 growproc(int n) {
+	uint64 old_sz, new_sz;
+	struct process *p = myproc();
+
+	old_sz = p->sz;
+	new_sz = old_sz + n;
+
+	if (n > 0) {
+		if ((new_sz = uvmalloc(p->pagetable, old_sz, new_sz, PTE_W)) == 0) {
+			return -1;
+		}
+	} else if (n < 0){
+		new_sz = uvmdealloc(p->pagetable, old_sz, new_sz);
+	}
+
+	p->sz = new_sz;
+	return 0;
+}
+
+// 打印当前进程列表。实现类似于ps aux功能
+void procdump() {
+	static char* states[] = {
+		[UNUSED]   = "UNUSED",
+		[USED]     = "USED",
+		[SLEEPING] = "SLEEPING",
+		[RUNNABLE] = "RUNNABLE",
+		[RUNNING]  = "RUNNING",
+		[ZOMBIE]   = "ZOMBIE",
+	};
+
+	struct process *p;
+	char* state;
+	printf("\n");
+
+	for(p = proc; p < &proc[NPROC]; ++p) {
+		if (p->state == UNUSED) {
+			continue;
+		}
+		if (p->state >= 0 && p->state < NELEM(states) && states[p->state]) {
+			state = states[p->state];
+		} else {
+			state = "???";
+		}
+		printf("%d %s %s", p->pid, state, p->name);
+		printf("\n");
+	}
 }

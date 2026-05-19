@@ -172,6 +172,21 @@ static inline uint64 r_stvec()
 	return x;
 }
 
+// Supervisor Timer Comparison Register
+static inline uint64 r_stimecmp()
+{
+	uint64 x;
+	// asm volatile("csrr %0, stimecmp" : "=r" (x) );
+	asm volatile("csrr %0, 0x14d" : "=r"(x));
+	return x;
+}
+
+static inline void w_stimecmp(uint64 x)
+{
+	// asm volatile("csrw stimecmp, %0" : : "r" (x));
+	asm volatile("csrw 0x14d, %0" : : "r"(x));
+}
+
 // Machine-mode interrupt vector
 static inline void w_mtvec(uint64 x)
 {
@@ -324,14 +339,14 @@ typedef uint64 *pagetable_t; // 512 PTEs
 #define PGROUNDUP(sz)  (((sz) + PGSIZE - 1) & ~(PGSIZE - 1))
 #define PGROUNDDOWN(a) (((a)) & ~(PGSIZE - 1))
 
-#define PTE_V   (1L << 0) // valid
-#define PTE_R   (1L << 1)
-#define PTE_W   (1L << 2)
-#define PTE_X   (1L << 3)
-#define PTE_U   (1L << 4) // user can access
-#define PTE_RW  (PTE_R | PTE_W) 
-#define PTE_RX  (PTE_R | PTE_X) 
-#define PTE_RWX (PTE_R | PTE_W | PTE_X) 
+#define PTE_V	(1L << 0) // valid
+#define PTE_R	(1L << 1)
+#define PTE_W	(1L << 2)
+#define PTE_X	(1L << 3)
+#define PTE_U	(1L << 4) // user can access
+#define PTE_RW	(PTE_R | PTE_W)
+#define PTE_RX	(PTE_R | PTE_X)
+#define PTE_RWX (PTE_R | PTE_W | PTE_X)
 
 // shift a physical address to the right place for a PTE.
 #define PA2PTE(pa) ((((uint64)pa) >> 12) << 10)

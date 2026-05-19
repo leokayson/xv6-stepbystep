@@ -3,6 +3,7 @@
 #include "fcntl.h"
 #include "fs.h"
 #include "param.h"
+#include "pipe.h"
 #include "proc.h"
 #include "riscv.h"
 #include "syscall.h"
@@ -11,11 +12,13 @@
 #include "printf.h"
 #include "log.h"
 #include "kalloc.h"
+#include "string.h"
+#include "vm.h"
 
 __attribute__((unused)) static int isdirempty(struct inode *dp);
 static struct inode				  *create(char *path, inodetype type, short major, short minor);
 static int						   argfd(int n, int *pfd, struct file **pf);
-static int						   falloc(struct file *f);
+static int						   fdalloc(struct file *f);
 
 uint64 sys_dup();
 uint64 sys_read();
@@ -53,8 +56,23 @@ static int argfd(int n, int *pfd, struct file **pf)
 	return 0;
 }
 
+// Is the directory dp empty except for "." and ".." ?
+static int isdirempty(struct inode *dp)
+{
+	int			  off;
+	struct dirent de;
+
+	for (off = 2 * sizeof(de); off < dp->size; off += sizeof(de)) {
+		if (readi(dp, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
+			panic("isdirempty: readi");
+		if (de.inum != 0)
+			return 0;
+	}
+	return 1;
+}
+
 // 将给定的文件存放在当前进程的文件数组中
-static int falloc(struct file *f)
+static int fdalloc(struct file *f)
 {
 	int				fd;
 	struct process *p = myproc();
@@ -71,14 +89,34 @@ static int falloc(struct file *f)
 
 uint64 sys_dup()
 {
-	// TODO
+	struct file *f;
+	int			 fd;
+
+	if (argfd(0, 0, &f) < 0) {
+		return -1;
+	}
+	if ((fd = fdalloc(f)) < 0) {
+		return -1;
+	}
+	fileup(f);
+
 	return 0;
 }
 
 uint64 sys_read()
 {
-	// TODO
-	return 0;
+	struct file *f;
+	int			 n;
+	uint64		 p;
+
+	argaddr(1, &p);
+	argint(2, &n);
+
+	if (argfd(0, 0, &f) < 0) {
+		return -1;
+	}
+
+	return fileread(f, p, n);
 }
 
 uint64 sys_write()
@@ -114,26 +152,120 @@ uint64 sys_close()
 
 uint64 sys_fstat()
 {
-	// TODO
-	return 0;
+	struct file *f;
+	uint64		 st; // 用户态地址
+
+	argaddr(1, &st);
+	if (argfd(0, 0, &f) < 0) {
+		return -1;
+	}
+
+	return filestat(f, st);
 }
 
-uint64 sys_link()
+// Create the path new as a link to the same inode as old.
+uint64 sys_link(void)
 {
-	// TODO
+	char		  name[DIRSIZ], new[MAXPATH], old[MAXPATH];
+	struct inode *dp, *ip;
+
+	if (argstr(0, old, MAXPATH) < 0 || argstr(1, new, MAXPATH) < 0)
+		return -1;
+
+	begin_op();
+	if ((ip = namei(old)) == 0) {
+		end_op();
+		return -1;
+	}
+
+	ilock(ip);
+	if (ip->type == I_DIR) {
+		iunlockput(ip);
+		end_op();
+		return -1;
+	}
+
+	ip->nlink++;
+	iupdate(ip);
+	iunlock(ip);
+
+	if ((dp = nameiparent(new, name)) == 0)
+		goto bad;
+	ilock(dp);
+	if (dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0) {
+		iunlockput(dp);
+		goto bad;
+	}
+	iunlockput(dp);
+	iput(ip);
+
+	end_op();
+
 	return 0;
+
+bad:
+	ilock(ip);
+	ip->nlink--;
+	iupdate(ip);
+	iunlockput(ip);
+	end_op();
+	return -1;
 }
 
 uint64 sys_unlink()
 {
-	// TODO
-	return 0;
-}
+	struct inode *ip, *dp;
+	struct dirent de;
+	char		  name[DIRSIZ], path[MAXPATH];
+	uint		  off;
 
-__attribute__((unused)) static int isdirempty(struct inode *dp)
-{
-	// TODO
+	if (argstr(0, path, MAXPATH) < 0)
+		return -1;
+
+	begin_op();
+	if ((dp = nameiparent(path, name)) == 0) {
+		end_op();
+		return -1;
+	}
+
+	ilock(dp);
+
+	// Cannot unlink "." or "..".
+	if (namecmp(name, ".") == 0 || namecmp(name, "..") == 0)
+		goto bad;
+
+	if ((ip = dirlookup(dp, name, &off)) == 0)
+		goto bad;
+	ilock(ip);
+
+	if (ip->nlink < 1)
+		panic("unlink: nlink < 1");
+	if (ip->type == I_DIR && !isdirempty(ip)) {
+		iunlockput(ip);
+		goto bad;
+	}
+
+	memset(&de, 0, sizeof(de));
+	if (writei(dp, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
+		panic("unlink: writei");
+	if (ip->type == I_DIR) {
+		dp->nlink--;
+		iupdate(dp);
+	}
+	iunlockput(dp);
+
+	ip->nlink--;
+	iupdate(ip);
+	iunlockput(ip);
+
+	end_op();
+
 	return 0;
+
+bad:
+	iunlockput(dp);
+	end_op();
+	return -1;
 }
 
 static struct inode *create(char *path, inodetype type, short major, short minor)
@@ -242,7 +374,7 @@ uint64 sys_open(void)
 	}
 
 	// 创建文件对象
-	if ((f = filealloc()) == 0 || (fd = falloc(f)) < 0) { // 创建失败则返回
+	if ((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0) { // 创建失败则返回
 		if (f)
 			fileclose(f);
 		iunlockput(ip);
@@ -257,9 +389,9 @@ uint64 sys_open(void)
 		f->type = F_INODE;
 		f->off	= 0; // 文件默认偏移为0
 	}
-	f->ip		= ip; // 关联文件对象和inode
-	f->readable = !(omode & O_WRONLY);
-	f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
+	f->ip		   = ip; // 关联文件对象和inode
+	f->is_readable = !(omode & O_WRONLY);
+	f->is_writable = (omode & O_WRONLY) || (omode & O_RDWR);
 
 	if ((omode & O_TRUNC) && ip->type == I_FILE) {
 		itrunc(ip);
@@ -273,20 +405,61 @@ uint64 sys_open(void)
 
 uint64 sys_mkdir()
 {
-	// TODO
+	char		  path[MAXPATH];
+	struct inode *ip;
+
+	begin_op();
+	if (argstr(0, path, MAXPATH) < 0 || (ip = create(path, I_DIR, 0, 0)) == 0) {
+		end_op();
+		return -1;
+	}
+	iunlockput(ip);
+	end_op();
 	return 0;
 }
 
 uint64 sys_mknod()
 {
-	// TODO
+	struct inode *ip;
+	char		  path[MAXPATH];
+	int			  major, minor;
+
+	begin_op();
+	argint(1, &major);
+	argint(2, &minor);
+	if ((argstr(0, path, MAXPATH)) < 0 || (ip = create(path, I_DEVICE, major, minor)) == 0) {
+		end_op();
+		return -1;
+	}
+	iunlockput(ip);
+	end_op();
 	return 0;
 }
 
 uint64 sys_chdir()
 {
-	// TODO
+	char			path[MAXPATH];
+	struct inode   *ip;
+	struct process *p = myproc();
+
+	begin_op();
+	if (argstr(0, path, MAXPATH) < 0 || (ip = namei(path)) == 0) {
+		goto bad;
+	}
+	ilock(ip);
+	if (ip->type != I_DIR) {
+		iunlockput(ip);
+		goto bad;
+	}
+	iunlock(ip);
+	iput(p->cwd);
+	end_op();
+	p->cwd = ip;
 	return 0;
+
+bad:
+	end_op();
+	return -1;
 }
 
 uint64 sys_exec()
@@ -337,6 +510,29 @@ bad:
 
 uint64 sys_pipe()
 {
-	// TODO
+	uint64			fdarray; // user pointer to array of two integers
+	struct file	   *rf, *wf;
+	int				fd0, fd1;
+	struct process *p = myproc();
+
+	argaddr(0, &fdarray);
+	if (pipealloc(&rf, &wf) < 0)
+		return -1;
+	fd0 = -1;
+	if ((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0) {
+		if (fd0 >= 0)
+			p->ofile[fd0] = 0;
+		fileclose(rf);
+		fileclose(wf);
+		return -1;
+	}
+	if (copyout(p->pagetable, fdarray, (char *)&fd0, sizeof(fd0)) < 0 ||
+		copyout(p->pagetable, fdarray + sizeof(fd0), (char *)&fd1, sizeof(fd1)) < 0) {
+		p->ofile[fd0] = 0;
+		p->ofile[fd1] = 0;
+		fileclose(rf);
+		fileclose(wf);
+		return -1;
+	}
 	return 0;
 }
